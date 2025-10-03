@@ -16,20 +16,29 @@ let package = Package(
         .library(
             name: "FoundationTypes",
             targets: ["FoundationTypes"]
+        ),
+        .library(
+            name: "FoundationCommon",
+            targets: ["FoundationCommon"]
+        ),
+        .executable(
+            name: "FoundationUIDemo",
+            targets: ["FoundationUIDemo"]
         )
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/daikimat/depermaid.git", from: "1.1.0"),
         .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
+        .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
     ],
     targets: [
         .executableTarget(
-            name: "FoundationUIDemo", 
+            name: "FoundationUIDemo",
             dependencies: [
                 "FoundationTools",
-                .product(name: "OpenCombine", package: "OpenCombine"),
-            ], 
+                .product(name: "OpenCombine", package: "OpenCombine")
+            ],
             path: "spm/Sources/FoundationUIDemo"
         ),
         .target(
@@ -38,9 +47,9 @@ let package = Package(
                 "FoundationCommon",
                 "FoundationTypes",
                 .product(name: "Logging", package: "swift-log"),
-                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombine", package: "OpenCombine")
             ],
-            path: "spm/Sources/FoundationTools",
+            path: "spm/Sources/FoundationTools"
         ),
         .target(
             name: "FoundationCommon",
@@ -48,6 +57,9 @@ let package = Package(
         ),
         .target(
             name: "FoundationTypes",
+            dependencies: [
+                .product(name: "kvSIMD", package: "kvSIMD.swift")
+            ],
             path: "spm/Sources/FoundationTypes"
         ),
         .testTarget(
@@ -64,6 +76,6 @@ let package = Package(
             name: "FoundationTypesTests",
             dependencies: ["FoundationTypes"],
             path: "spm/Tests/FoundationTypesTests"
-        ),
+        )
     ]
 )
