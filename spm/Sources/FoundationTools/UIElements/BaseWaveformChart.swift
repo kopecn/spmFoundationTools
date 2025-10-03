@@ -28,7 +28,7 @@ public struct BaseWaveformChart: View {
 
     // Default colors for waveforms
     private static let defaultColors: [Color] = [
-        .blue, .red, .green, .orange, .purple, .pink, .cyan, .yellow
+        .blue, .red, .green, .orange, .purple, .pink, .cyan, .yellow,
     ]
 
     public init(
@@ -41,7 +41,7 @@ public struct BaseWaveformChart: View {
         self.waveforms = waveforms
         self.xAxisLabel = xAxisLabel
         self.yAxisLabel = yAxisLabel
-        
+
         // Ensure labels array matches waveforms count
         if let providedLabels = labels {
             if providedLabels.count >= waveforms.count {
@@ -55,7 +55,7 @@ public struct BaseWaveformChart: View {
         } else {
             self.labels = Array(0..<waveforms.count).map { "Waveform \($0 + 1)" }
         }
-        
+
         // Ensure colors array matches waveforms count
         if let providedColors = colors {
             if providedColors.count >= waveforms.count {
