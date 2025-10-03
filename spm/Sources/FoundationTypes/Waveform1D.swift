@@ -50,7 +50,7 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
         self.init(values: values, dt: dt, t0: nil)
     }
 
-    // MARK: - Computed Properties (Available to all numeric types)
+    // MARK: - Computed Properties
 
     /// Get the total duration of the waveform
     public var duration: TimeInterval {
@@ -165,5 +165,33 @@ extension Waveform1D where T: SignedInteger {
     /// Calculate the absolute sum of all values
     public var absoluteSum: T {
         return values.reduce(T.zero) { $0 + abs($1) }
+    }
+}
+
+// MARK: - Equatable
+extension Waveform1D: Equatable {
+    public static func == (lhs: Waveform1D<T>, rhs: Waveform1D<T>) -> Bool {
+        return lhs.values == rhs.values && abs(lhs.dt - rhs.dt) < 1e-10 && lhs.t0 == rhs.t0
+    }
+}
+
+// MARK: - Hashable
+extension Waveform1D: Hashable where T: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(values)
+        hasher.combine(dt)
+        hasher.combine(t0)
+    }
+}
+
+// MARK: - CustomStringConvertible
+extension Waveform1D: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        return "Waveform1D(samples: \(values.count), dt: \(dt), duration: \(duration)s)"
+    }
+
+    public var debugDescription: String {
+        return
+            "Waveform1D<\(T.self)>(samples: \(values.count), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
     }
 }

@@ -190,7 +190,6 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     }
 }
 
-
 // MARK: - Equatable
 extension Quaternion: Equatable {
     public static func == (lhs: Quaternion<T>, rhs: Quaternion<T>) -> Bool {
@@ -209,16 +208,15 @@ extension Quaternion: Hashable where T: Hashable {
 }
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
-extension Quaternion: CustomStringConvertible, CustomDebugStringConvertible{
+extension Quaternion: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         return "Quaternion(x: \(x), y: \(y), z: \(z), w: \(w))"
     }
-    
+
     public var debugDescription: String {
         return "Quaternion<\(T.self)>(x: \(x), y: \(y), z: \(z), w: \(w))"
     }
 }
-
 
 // MARK: - Codable Implementation
 extension Quaternion {
@@ -247,3 +245,90 @@ extension Quaternion {
 
 // Unsafe but explicit Sendable conformance
 extension Quaternion: @unchecked Sendable {}
+
+// MARK: - SIMD-Optimized Operations
+extension Quaternion where T == Float {
+    /// Normalize the quaternion in place to make it a unit quaternion
+    @inlinable
+    public mutating func normalize() {
+        let magnitude = simd_length(vector)
+        if magnitude > T.ulpOfOne {
+            vector = simd_normalize(vector)
+        } else {
+            self = .identity
+        }
+    }
+
+    /// Get a normalized copy of the quaternion
+    @inlinable
+    public var normalized: Quaternion<T> {
+        let magnitude = simd_length(vector)
+        if magnitude > T.ulpOfOne {
+            return Quaternion<T>(vector: simd_normalize(vector))
+        } else {
+            return .identity
+        }
+    }
+
+    /// The magnitude (length) of the quaternion
+    @inlinable
+    public var magnitude: T {
+        return simd_length(vector)
+    }
+
+    /// The squared magnitude of the quaternion
+    @inlinable
+    public var magnitudeSquared: T {
+        return simd_length_squared(vector)
+    }
+
+    /// Check if this is a unit quaternion (normalized)
+    @inlinable
+    public var isUnit: Bool {
+        let mag = magnitude
+        return abs(mag - 1) < T.ulpOfOne * 10
+    }
+}
+
+extension Quaternion where T == Double {
+    /// Normalize the quaternion in place to make it a unit quaternion
+    @inlinable
+    public mutating func normalize() {
+        let magnitude = simd_length(vector)
+        if magnitude > T.ulpOfOne {
+            vector = simd_normalize(vector)
+        } else {
+            self = .identity
+        }
+    }
+
+    /// Get a normalized copy of the quaternion
+    @inlinable
+    public var normalized: Quaternion<T> {
+        let magnitude = simd_length(vector)
+        if magnitude > T.ulpOfOne {
+            return Quaternion<T>(vector: simd_normalize(vector))
+        } else {
+            return .identity
+        }
+    }
+
+    /// The magnitude (length) of the quaternion
+    @inlinable
+    public var magnitude: T {
+        return simd_length(vector)
+    }
+
+    /// The squared magnitude of the quaternion
+    @inlinable
+    public var magnitudeSquared: T {
+        return simd_length_squared(vector)
+    }
+
+    /// Check if this is a unit quaternion (normalized)
+    @inlinable
+    public var isUnit: Bool {
+        let mag = magnitude
+        return abs(mag - 1) < T.ulpOfOne * 10
+    }
+}
