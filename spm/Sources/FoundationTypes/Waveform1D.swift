@@ -85,9 +85,12 @@ extension Waveform1D where T: Comparable {
 
     /// Calculate the peak-to-peak amplitude
     public var peakToPeak: T? {
-        guard !values.isEmpty else { return nil }
-        let min = values.min()!
-        let max = values.max()!
+        guard
+            let min = values.min(),
+            let max = values.max()
+        else {
+            return nil
+        }
         return max - min
     }
 
