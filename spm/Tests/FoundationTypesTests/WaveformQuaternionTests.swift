@@ -210,7 +210,7 @@ struct WaveformQuaternionNormalizationTests {
 
     @Test("Normalize mutating method - Float")
     func normalizeMutatingFloat() {
-        var quaternions = [
+        let quaternions = [
             FloatQuaternion(x: 2.0, y: 0.0, z: 0.0, w: 2.0),
             FloatQuaternion(x: 1.0, y: 1.0, z: 1.0, w: 1.0),
         ]
@@ -234,7 +234,7 @@ struct WaveformQuaternionNormalizationTests {
 
     @Test("Normalize mutating method - Double")
     func normalizeMutatingDouble() {
-        var quaternions = [
+        let quaternions = [
             DoubleQuaternion(x: 3.0, y: 4.0, z: 0.0, w: 0.0),
             DoubleQuaternion(x: 1.0, y: 1.0, z: 1.0, w: 1.0),
         ]

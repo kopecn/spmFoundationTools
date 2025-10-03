@@ -830,8 +830,6 @@ struct QuaternionEdgeCasesTests {
 
     @Test("Memory layout consistency")
     func memoryLayoutConsistency() {
-        let quat = DoubleQuaternion(x: 1.0, y: 2.0, z: 3.0, w: 4.0)
-
         // The quaternion should have the same memory layout as SIMD4<Double>
         #expect(MemoryLayout<DoubleQuaternion>.size == MemoryLayout<SIMD4<Double>>.size)
         #expect(MemoryLayout<DoubleQuaternion>.alignment == MemoryLayout<SIMD4<Double>>.alignment)

@@ -140,12 +140,13 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
             guard let timestamp = Double(components[0]) else {
                 throw WaveformQuaternionCodingError.invalidCSVFormat
             }
-            
+
             // Parse T values using LosslessStringConvertible
             guard let x = T(components[1].trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let y = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let z = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let w = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                let y = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
+                let z = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
+                let w = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines))
+            else {
                 throw WaveformQuaternionCodingError.invalidCSVFormat
             }
 
@@ -154,7 +155,8 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
         }
 
         guard let firstTimestamp = timestamps.first,
-              timestamps.count > 1 else {
+            timestamps.count > 1
+        else {
             throw WaveformQuaternionCodingError.insufficientData
         }
 
