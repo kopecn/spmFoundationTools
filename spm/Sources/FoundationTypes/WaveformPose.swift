@@ -1,0 +1,313 @@
+import Foundation
+import simd
+
+// Convenience typealiases for common use cases
+public typealias DoubleWaveformPose = WaveformPose<Double>
+public typealias FloatWaveformPose = WaveformPose<Float>
+
+/// A pose waveform data structure representing time-series spatial pose data (position + orientation).
+///
+/// `WaveformPose` stores uniformly sampled pose values (position and quaternion) with their temporal characteristics,
+/// making it suitable for motion tracking, pose analysis, and spatial-orientation time-series data.
+///
+/// Example usage:
+/// ```swift
+/// let startTime = Date()
+/// let samplingInterval = 0.001 // 1ms sampling
+/// let positions: [FloatPosition] = [
+///     FloatPosition.origin,
+///     FloatPosition(x: 0.1, y: 0.0, z: 0.0),
+///     FloatPosition(x: 0.2, y: 0.1, z: 0.0)
+/// ]
+/// let quaternions: [FloatQuaternion] = [
+///     FloatQuaternion.identity,
+///     FloatQuaternion(x: 0.1, y: 0.0, z: 0.0, w: 0.995),
+///     FloatQuaternion(x: 0.2, y: 0.0, z: 0.0, w: 0.98)
+/// ]
+/// var waveform = WaveformPose(positions: positions, quaternions: quaternions, dt: samplingInterval, t0: startTime)
+///
+/// // Double pose waveform
+/// var doubleWaveform = DoubleWaveformPose(positions: [DoublePosition.origin], quaternions: [DoubleQuaternion.identity])
+/// ```
+public struct WaveformPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable {
+    /// The sampled position values of the waveform
+    public var positions: [Position<T>]
+
+    /// The sampled quaternion values of the waveform
+    public var quaternions: [Quaternion<T>]
+
+    /// The time interval between consecutive samples in seconds
+    public var dt: TimeInterval
+
+    /// The absolute start time of the first sample
+    public var t0: Date?
+
+    /// Initialize with all parameters
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: TimeInterval, t0: Date?) {
+        self.positions = positions
+        self.quaternions = quaternions
+        self.dt = dt
+        self.t0 = t0
+    }
+
+    /// Initialize with positions and quaternions only, using default dt=1.0 and t0=nil
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>]) {
+        self.init(positions: positions, quaternions: quaternions, dt: 1.0, t0: nil)
+    }
+
+    /// Initialize with positions, quaternions and dt, using default t0=nil
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: TimeInterval) {
+        self.init(positions: positions, quaternions: quaternions, dt: dt, t0: nil)
+    }
+
+    // MARK: - Computed Properties (Available to all pose types)
+
+    /// Get the total duration of the waveform
+    public var duration: TimeInterval {
+        guard sampleCount > 1 else { return 0 }
+        return TimeInterval(sampleCount - 1) * dt
+    }
+
+    /// Get the sampling frequency (Hz)
+    public var samplingFrequency: Double {
+        return 1.0 / dt
+    }
+
+    /// Get the Nyquist frequency (Hz)
+    public var nyquistFrequency: Double {
+        return samplingFrequency / 2.0
+    }
+
+    /// Get the end time of the waveform
+    public var endTime: Date? {
+        guard let t0 = t0 else { return nil }
+        return t0.addingTimeInterval(duration)
+    }
+
+    /// Get the number of samples (minimum of positions and quaternions count)
+    public var sampleCount: Int {
+        return min(positions.count, quaternions.count)
+    }
+
+    /// Check if positions and quaternions arrays have matching counts
+    public var isValid: Bool {
+        return positions.count == quaternions.count
+    }
+}
+
+// MARK: - Computed Properties for Float Types
+extension WaveformPose where T == Float {
+
+    /// Check if all positions in the waveform are unit positions (magnitude ≈ 1)
+    public var areAllPositionsUnit: Bool {
+        return positions.allSatisfy { $0.isUnit }
+    }
+
+    /// Check if all quaternions in the waveform are normalized (unit quaternions)
+    public var areAllQuaternionsNormalized: Bool {
+        return quaternions.allSatisfy { $0.isUnit }
+    }
+
+    /// Normalize all positions and quaternions in the waveform
+    public mutating func normalize() {
+        for i in 0..<positions.count {
+            positions[i].normalize()
+        }
+        for i in 0..<quaternions.count {
+            quaternions[i].normalize()
+        }
+    }
+
+    /// Get a normalized copy of the waveform
+    public var normalized: WaveformPose<T> {
+        let normalizedPositions = positions.map { $0.normalized }
+        let normalizedQuaternions = quaternions.map { $0.normalized }
+        return WaveformPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+    }
+
+    /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
+    public var componentWaveforms:
+        (
+            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
+            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
+        )
+    {
+        let posXValues = positions.map { $0.x }
+        let posYValues = positions.map { $0.y }
+        let posZValues = positions.map { $0.z }
+
+        let quatXValues = quaternions.map { $0.x }
+        let quatYValues = quaternions.map { $0.y }
+        let quatZValues = quaternions.map { $0.z }
+        let quatWValues = quaternions.map { $0.w }
+
+        return (
+            positions: (
+                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
+            ),
+            quaternions: (
+                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
+            )
+        )
+    }
+
+    /// Get the position waveform component
+    public var positionWaveform: WaveformPosition<T> {
+        return WaveformPosition<T>(values: positions, dt: dt, t0: t0)
+    }
+
+    /// Get the quaternion waveform component
+    public var quaternionWaveform: WaveformQuaternion<T> {
+        return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
+    }
+}
+
+// MARK: - Computed Properties for Double Types
+extension WaveformPose where T == Double {
+
+    /// Check if all positions in the waveform are unit positions (magnitude ≈ 1)
+    public var areAllPositionsUnit: Bool {
+        return positions.allSatisfy { $0.isUnit }
+    }
+
+    /// Check if all quaternions in the waveform are normalized (unit quaternions)
+    public var areAllQuaternionsNormalized: Bool {
+        return quaternions.allSatisfy { $0.isUnit }
+    }
+
+    /// Normalize all positions and quaternions in the waveform
+    public mutating func normalize() {
+        for i in 0..<positions.count {
+            positions[i].normalize()
+        }
+        for i in 0..<quaternions.count {
+            quaternions[i].normalize()
+        }
+    }
+
+    /// Get a normalized copy of the waveform
+    public var normalized: WaveformPose<T> {
+        let normalizedPositions = positions.map { $0.normalized }
+        let normalizedQuaternions = quaternions.map { $0.normalized }
+        return WaveformPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+    }
+
+    /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
+    public var componentWaveforms:
+        (
+            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
+            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
+        )
+    {
+        let posXValues = positions.map { $0.x }
+        let posYValues = positions.map { $0.y }
+        let posZValues = positions.map { $0.z }
+
+        let quatXValues = quaternions.map { $0.x }
+        let quatYValues = quaternions.map { $0.y }
+        let quatZValues = quaternions.map { $0.z }
+        let quatWValues = quaternions.map { $0.w }
+
+        return (
+            positions: (
+                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
+            ),
+            quaternions: (
+                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
+            )
+        )
+    }
+
+    /// Get the position waveform component
+    public var positionWaveform: WaveformPosition<T> {
+        return WaveformPosition<T>(values: positions, dt: dt, t0: t0)
+    }
+
+    /// Get the quaternion waveform component
+    public var quaternionWaveform: WaveformQuaternion<T> {
+        return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
+    }
+}
+
+// MARK: - Utility Methods
+extension WaveformPose {
+
+    /// Create a pose waveform from separate position and quaternion waveforms
+    public static func from(
+        positionWaveform: WaveformPosition<T>,
+        quaternionWaveform: WaveformQuaternion<T>
+    ) -> WaveformPose<T>? {
+        guard
+            positionWaveform.values.count == quaternionWaveform.values.count
+                && abs(positionWaveform.dt - quaternionWaveform.dt) < 1e-10
+                && positionWaveform.t0 == quaternionWaveform.t0
+        else {
+            return nil
+        }
+
+        return WaveformPose<T>(
+            positions: positionWaveform.values,
+            quaternions: quaternionWaveform.values,
+            dt: positionWaveform.dt,
+            t0: positionWaveform.t0
+        )
+    }
+
+    /// Append another pose waveform to this one
+    /// Both waveforms must have the same sampling rate
+    public mutating func append(_ other: WaveformPose<T>) throws {
+        guard abs(self.dt - other.dt) < 1e-10 else {
+            throw WaveformError.incompatibleSamplingRates
+        }
+
+        self.positions.append(contentsOf: other.positions)
+        self.quaternions.append(contentsOf: other.quaternions)
+    }
+
+    /// Create a new waveform by concatenating this one with another
+    public func concatenated(with other: WaveformPose<T>) throws -> WaveformPose<T> {
+        var result = self
+        try result.append(other)
+        return result
+    }
+}
+
+// MARK: - Equatable
+extension WaveformPose: Equatable {
+    public static func == (lhs: WaveformPose<T>, rhs: WaveformPose<T>) -> Bool {
+        return lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions && abs(lhs.dt - rhs.dt) < 1e-10
+            && lhs.t0 == rhs.t0
+    }
+}
+
+// MARK: - Hashable
+extension WaveformPose: Hashable where T: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(positions)
+        hasher.combine(quaternions)
+        hasher.combine(dt)
+        hasher.combine(t0)
+    }
+}
+
+// MARK: - CustomStringConvertible
+extension WaveformPose: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        return "WaveformPose(samples: \(sampleCount), dt: \(dt), duration: \(duration)s)"
+    }
+
+    public var debugDescription: String {
+        return
+            "WaveformPose<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
+    }
+}

@@ -203,13 +203,6 @@ extension WaveformQuaternion {
     }
 }
 
-// MARK: - Error Types
-public enum WaveformError: Error {
-    case incompatibleSamplingRates
-    case incompatibleDimensions
-    case invalidTimeRange
-}
-
 // MARK: - Equatable
 extension WaveformQuaternion: Equatable {
     public static func == (lhs: WaveformQuaternion<T>, rhs: WaveformQuaternion<T>) -> Bool {
