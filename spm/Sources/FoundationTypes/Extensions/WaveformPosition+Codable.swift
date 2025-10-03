@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension WaveformQuaternion: Codable {
+extension WaveformPosition: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case values
@@ -12,7 +12,7 @@ extension WaveformQuaternion: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        values = try container.decode([Quaternion<T>].self, forKey: .values)
+        values = try container.decode([Position<T>].self, forKey: .values)
         dt = try container.decode(TimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
     }
@@ -27,23 +27,23 @@ extension WaveformQuaternion: Codable {
 }
 
 // MARK: - File Loading/Saving
-extension WaveformQuaternion {
+extension WaveformPosition {
 
-    /// Load a WaveformQuaternion from a JSON file at the specified URL
+    /// Load a WaveformPosition from a JSON file at the specified URL
     /// - Parameter url: The URL of the JSON file to load
-    /// - Returns: A decoded WaveformQuaternion instance
+    /// - Returns: A decoded WaveformPosition instance
     /// - Throws: Decoding errors or file reading errors
-    public static func load(from url: URL) throws -> WaveformQuaternion<T> {
+    public static func load(from url: URL) throws -> WaveformPosition<T> {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
         // Use milliseconds since 1970 for better precision
         decoder.dateDecodingStrategy = .millisecondsSince1970
 
-        return try decoder.decode(WaveformQuaternion<T>.self, from: data)
+        return try decoder.decode(WaveformPosition<T>.self, from: data)
     }
 
-    /// Save the WaveformQuaternion to a JSON file at the specified URL
+    /// Save the WaveformPosition to a JSON file at the specified URL
     /// - Parameter url: The URL where the JSON file should be saved
     /// - Throws: Encoding errors or file writing errors
     public func save(to url: URL) throws {
@@ -57,17 +57,17 @@ extension WaveformQuaternion {
         try data.write(to: url)
     }
 
-    /// Create a WaveformQuaternion from JSON data
+    /// Create a WaveformPosition from JSON data
     /// - Parameter data: The JSON data to decode
-    /// - Returns: A decoded WaveformQuaternion instance
+    /// - Returns: A decoded WaveformPosition instance
     /// - Throws: Decoding errors
-    public static func from(jsonData data: Data) throws -> WaveformQuaternion<T> {
+    public static func from(jsonData data: Data) throws -> WaveformPosition<T> {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
-        return try decoder.decode(WaveformQuaternion<T>.self, from: data)
+        return try decoder.decode(WaveformPosition<T>.self, from: data)
     }
 
-    /// Convert the WaveformQuaternion to JSON data
+    /// Convert the WaveformPosition to JSON data
     /// - Returns: JSON data representation of the waveform
     /// - Throws: Encoding errors
     public func toJSONData() throws -> Data {
@@ -77,7 +77,7 @@ extension WaveformQuaternion {
         return try encoder.encode(self)
     }
 
-    /// Convert the WaveformQuaternion to a JSON string
+    /// Convert the WaveformPosition to a JSON string
     /// - Returns: JSON string representation of the waveform
     /// - Throws: Encoding errors
     public func toJSONString() throws -> String {
@@ -89,18 +89,18 @@ extension WaveformQuaternion {
     }
 }
 
-// MARK: - Quaternion-Specific File Operations
-extension WaveformQuaternion {
+// MARK: - Position-Specific File Operations
+extension WaveformPosition {
 
-    /// Export to CSV format with quaternion components as columns
+    /// Export to CSV format with position components as columns
     /// - Parameter url: The URL where the CSV file should be saved
     /// - Throws: File writing errors
     public func exportToCSV(to url: URL) throws {
-        var csvContent = "timestamp,x,y,z,w\n"
+        var csvContent = "timestamp,x,y,z\n"
 
-        for (index, quaternion) in values.enumerated() {
+        for (index, position) in values.enumerated() {
             let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * dt
-            csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            csvContent += "\(time),\(position.x),\(position.y),\(position.z)\n"
         }
 
         try csvContent.write(to: url, atomically: true, encoding: .utf8)
@@ -109,17 +109,17 @@ extension WaveformQuaternion {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformQuaternion where T: LosslessStringConvertible {
+extension WaveformPosition where T: LosslessStringConvertible {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
-    /// - Returns: A WaveformQuaternion created from the CSV data
+    /// - Returns: A WaveformPosition created from the CSV data
     /// - Throws: File reading errors or parsing errors
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
-    ) throws -> WaveformQuaternion<T> {
+    ) throws -> WaveformPosition<T> {
         let csvContent = try String(contentsOf: url)
         let lines = csvContent.components(separatedBy: .newlines).filter { !$0.isEmpty }
 
@@ -128,30 +128,29 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
         }
 
         let dataLines = hasHeader ? Array(lines.dropFirst()) : lines
-        var quaternions: [Quaternion<T>] = []
+        var positions: [Position<T>] = []
         var timestamps: [Double] = []
 
         for line in dataLines {
             let components = line.components(separatedBy: ",")
-            guard components.count >= 5 else {
-                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z,w")
+            guard components.count >= 4 else {
+                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z")
             }
 
             guard let timestamp = Double(components[0]) else {
-                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z,w")
+                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z")
             }
 
             // Parse T values using LosslessStringConvertible
             guard let x = T(components[1].trimmingCharacters(in: .whitespacesAndNewlines)),
                 let y = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let z = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let w = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines))
+                let z = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines))
             else {
-                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z,w")
+                throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z")
             }
 
             timestamps.append(timestamp)
-            quaternions.append(Quaternion<T>(x: x, y: y, z: z, w: w))
+            positions.append(Position<T>(x: x, y: y, z: z))
         }
 
         guard let firstTimestamp = timestamps.first,
@@ -164,31 +163,31 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
         let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
         let t0 = Date(timeIntervalSince1970: firstTimestamp)
 
-        return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
+        return WaveformPosition<T>(values: positions, dt: dt, t0: t0)
     }
 }
 
 // MARK: - Convenience Extensions for Common Types
-extension DoubleWaveformQuaternion {
-    /// Load a DoubleWaveformQuaternion from a JSON file
-    public static func loadFromFile(_ url: URL) throws -> DoubleWaveformQuaternion {
+extension DoubleWaveformPosition {
+    /// Load a DoubleWaveformPosition from a JSON file
+    public static func loadFromFile(_ url: URL) throws -> DoubleWaveformPosition {
         return try load(from: url)
     }
 
     /// Load from CSV file with Double precision
-    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> DoubleWaveformQuaternion {
+    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> DoubleWaveformPosition {
         return try importFromCSV(from: url, hasHeader: hasHeader)
     }
 }
 
-extension FloatWaveformQuaternion {
-    /// Load a FloatWaveformQuaternion from a JSON file
-    public static func loadFromFile(_ url: URL) throws -> FloatWaveformQuaternion {
+extension FloatWaveformPosition {
+    /// Load a FloatWaveformPosition from a JSON file
+    public static func loadFromFile(_ url: URL) throws -> FloatWaveformPosition {
         return try load(from: url)
     }
 
     /// Load from CSV file with Float precision
-    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> FloatWaveformQuaternion {
+    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> FloatWaveformPosition {
         return try importFromCSV(from: url, hasHeader: hasHeader)
     }
 }

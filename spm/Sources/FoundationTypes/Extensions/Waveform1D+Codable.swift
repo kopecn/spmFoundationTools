@@ -89,24 +89,6 @@ extension Waveform1D where T: Codable {
     }
 }
 
-// MARK: - Coding Errors
-public enum WaveformCodingError: Error, LocalizedError {
-    case stringConversionFailed
-    case invalidFileFormat
-    case missingRequiredField(String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .stringConversionFailed:
-            return "Failed to convert JSON data to string"
-        case .invalidFileFormat:
-            return "Invalid file format for waveform data"
-        case .missingRequiredField(let field):
-            return "Missing required field: \(field)"
-        }
-    }
-}
-
 // MARK: - Convenience Extensions for Common Types
 extension DoubleWaveform1D {
     /// Load a DoubleWaveform1D from a JSON file

@@ -650,76 +650,31 @@ struct Waveform1DCodableTests {
         // Test with different field name
         let missingDtError = WaveformCodingError.missingRequiredField("dt")
         #expect(missingDtError.errorDescription == "Missing required field: dt")
+
+        // Test incompatibleComponentWaveforms error
+        let incompatibleError = WaveformCodingError.incompatibleComponentWaveforms
+        #expect(
+            incompatibleError.errorDescription == "Component waveforms have incompatible dimensions or sampling rates"
+        )
+
+        // Test emptyCSVFile error
+        let emptyCSVError = WaveformCodingError.emptyCSVFile
+        #expect(emptyCSVError.errorDescription == "CSV file is empty")
+
+        // Test invalidCSVFormat error
+        let invalidCSVError = WaveformCodingError.invalidCSVFormat(expected: "timestamp,value")
+        #expect(invalidCSVError.errorDescription == "CSV file has invalid format - expected timestamp,value columns")
+
+        // Test insufficientData error
+        let insufficientDataError = WaveformCodingError.insufficientData
+        #expect(insufficientDataError.errorDescription == "Insufficient data points in CSV file")
     }
 
     @Test("String conversion failure in toJSONString")
     func stringConversionFailureInToJSONString() throws {
-
-        // This should either succeed or throw a different encoding error
-        // The string conversion failure is hard to trigger directly with normal data
-        // So we'll test the error type itself
+        // Test the error type itself
         let error = WaveformCodingError.stringConversionFailed
         #expect(error.localizedDescription.contains("Failed to convert JSON data to string"))
-    }
-
-    @Test("Custom encoder that produces invalid data for string conversion")
-    func customEncoderInvalidData() throws {
-        // Create a mock scenario where we can test the string conversion error
-        struct MockWaveform1D: Codable {
-            let data: Data
-
-            func encode(to encoder: Encoder) throws {
-                // Encode invalid UTF-8 bytes
-                var container = encoder.singleValueContainer()
-                try container.encode([0xFF, 0xFE, 0xFD])  // Invalid UTF-8 sequence
-            }
-        }
-
-        // Test that our error description is accessible
-        do {
-            throw WaveformCodingError.stringConversionFailed
-        } catch let error as WaveformCodingError {
-            #expect(error.errorDescription == "Failed to convert JSON data to string")
-        }
-    }
-
-    @Test("Encoding with special double values")
-    func encodingWithSpecialDoubleValues() throws {
-        // Test with special floating point values that might cause encoding issues
-        let specialValues = [
-            Double.infinity,
-            -Double.infinity,
-            Double.nan,
-            Double.greatestFiniteMagnitude,
-            Double.leastNormalMagnitude,
-            0.0,
-            -0.0,
-        ]
-
-        let waveform = DoubleWaveform1D(values: specialValues, dt: 0.001)
-
-        // This might throw an encoding error, but we want to ensure our error handling works
-        do {
-            let jsonString = try waveform.toJSONString()
-            // If it succeeds, verify it's a valid string
-            #expect(!jsonString.isEmpty)
-        } catch {
-            // If it fails, that's also acceptable for special values
-            // The important thing is that our error handling works
-            print("Expected encoding failure for special values: \(error)")
-        }
-    }
-
-    @Test("Error descriptions are localized")
-    func errorDescriptionsAreLocalized() throws {
-        let stringError = WaveformCodingError.stringConversionFailed
-        let formatError = WaveformCodingError.invalidFileFormat
-        let missingFieldError = WaveformCodingError.missingRequiredField("testField")
-
-        // Test that localizedDescription works (it should fall back to errorDescription)
-        #expect(stringError.localizedDescription == stringError.errorDescription)
-        #expect(formatError.localizedDescription == formatError.errorDescription)
-        #expect(missingFieldError.localizedDescription == missingFieldError.errorDescription)
     }
 
     @Test("All WaveformCodingError cases are covered")
@@ -729,6 +684,10 @@ struct Waveform1DCodableTests {
             .stringConversionFailed,
             .invalidFileFormat,
             .missingRequiredField("example"),
+            .incompatibleComponentWaveforms,
+            .emptyCSVFile,
+            .invalidCSVFormat(expected: "timestamp,value"),
+            .insufficientData,
         ]
 
         for error in allErrors {
@@ -761,4 +720,5 @@ struct Waveform1DCodableTests {
             try DoubleWaveform1D.load(from: fileURL)
         }
     }
+
 }

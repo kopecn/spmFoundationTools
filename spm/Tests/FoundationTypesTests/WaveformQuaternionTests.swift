@@ -725,3 +725,125 @@ struct WaveformQuaternionEdgeCasesTests {
         #expect(waveformFuture.t0 == futureDate)
     }
 }
+
+// MARK: - Error Handling Tests Suite
+@Suite("WaveformQuaternion Error Handling")
+struct WaveformQuaternionErrorHandlingTests {
+
+    @Test("CSV import error handling - empty file")
+    func csvImportEmptyFile() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("empty_quaternions.csv")
+
+        try "".write(to: tempURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: WaveformCodingError.self) {
+            try FloatWaveformQuaternion.importFromCSV(from: tempURL)
+        }
+
+        // Verify the specific error type by catching it
+        do {
+            _ = try FloatWaveformQuaternion.importFromCSV(from: tempURL)
+            #expect(Bool(false), "Expected an error to be thrown")
+        } catch let error as WaveformCodingError {
+            switch error {
+            case .emptyCSVFile:
+                // This is the expected error
+                break
+            default:
+                #expect(Bool(false), "Expected .emptyCSVFile error, got \(error)")
+            }
+        } catch {
+            #expect(Bool(false), "Expected WaveformCodingError, got \(error)")
+        }
+
+        try? FileManager.default.removeItem(at: tempURL)
+    }
+
+    @Test("CSV import error handling - invalid format")
+    func csvImportInvalidFormat() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("invalid_quaternions.csv")
+
+        // Missing w component
+        let invalidCSV = "timestamp,x,y,z\n1.0,2.0,3.0,4.0\n"
+        try invalidCSV.write(to: tempURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: WaveformCodingError.self) {
+            try DoubleWaveformQuaternion.importFromCSV(from: tempURL)
+        }
+
+        // Verify the specific error type and message
+        do {
+            _ = try DoubleWaveformQuaternion.importFromCSV(from: tempURL)
+            #expect(Bool(false), "Expected an error to be thrown")
+        } catch let error as WaveformCodingError {
+            switch error {
+            case .invalidCSVFormat(let expected):
+                #expect(expected == "timestamp,x,y,z,w")
+            default:
+                #expect(Bool(false), "Expected .invalidCSVFormat error, got \(error)")
+            }
+        } catch {
+            #expect(Bool(false), "Expected WaveformCodingError, got \(error)")
+        }
+
+        try? FileManager.default.removeItem(at: tempURL)
+    }
+
+    @Test("CSV import error handling - insufficient data")
+    func csvImportInsufficientData() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("insufficient_quaternions.csv")
+
+        let csvHeaderOnly = "timestamp,x,y,z,w\n"
+        try csvHeaderOnly.write(to: tempURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: WaveformCodingError.self) {
+            try FloatWaveformQuaternion.importFromCSV(from: tempURL)
+        }
+
+        // Verify the specific error type
+        do {
+            _ = try FloatWaveformQuaternion.importFromCSV(from: tempURL)
+            #expect(Bool(false), "Expected an error to be thrown")
+        } catch let error as WaveformCodingError {
+            switch error {
+            case .insufficientData:
+                // This is the expected error
+                break
+            default:
+                #expect(Bool(false), "Expected .insufficientData error, got \(error)")
+            }
+        } catch {
+            #expect(Bool(false), "Expected WaveformCodingError, got \(error)")
+        }
+
+        try? FileManager.default.removeItem(at: tempURL)
+    }
+
+    @Test("JSON string conversion error handling")
+    func jsonStringConversionErrorHandling() {
+        let error = WaveformCodingError.stringConversionFailed
+        #expect(error.errorDescription == "Failed to convert JSON data to string")
+        #expect(error.localizedDescription == error.errorDescription)
+    }
+
+    @Test("Unified error descriptions for quaternions")
+    func unifiedErrorDescriptionsForQuaternions() {
+        let quaternionSpecificErrors: [WaveformCodingError] = [
+            .emptyCSVFile,
+            .invalidCSVFormat(expected: "timestamp,x,y,z,w"),
+            .insufficientData,
+            .stringConversionFailed,
+            .invalidFileFormat,
+            .missingRequiredField("quaternions"),
+            .incompatibleComponentWaveforms,
+        ]
+
+        for error in quaternionSpecificErrors {
+            #expect(error.errorDescription != nil)
+            #expect(!error.errorDescription!.isEmpty)
+        }
+    }
+}
