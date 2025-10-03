@@ -12,6 +12,10 @@ let package = Package(
         .library(
             name: "FoundationTools",
             targets: ["FoundationTools"]
+        ),
+        .library(
+            name: "FoundationTypes",
+            targets: ["FoundationTypes"]
         )
     ],
     dependencies: [
@@ -32,6 +36,7 @@ let package = Package(
             name: "FoundationTools",
             dependencies: [
                 "FoundationCommon",
+                "FoundationTypes",
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "OpenCombine", package: "OpenCombine"),
             ],
@@ -40,6 +45,10 @@ let package = Package(
         .target(
             name: "FoundationCommon",
             path: "spm/Sources/FoundationCommon"
+        ),
+        .target(
+            name: "FoundationTypes",
+            path: "spm/Sources/FoundationTypes"
         ),
         .testTarget(
             name: "FoundationToolsTests",
@@ -50,6 +59,11 @@ let package = Package(
             name: "FoundationCommonTests",
             dependencies: ["FoundationCommon"],
             path: "spm/Tests/FoundationCommonTests"
+        ),
+        .testTarget(
+            name: "FoundationTypesTests",
+            dependencies: ["FoundationTypes"],
+            path: "spm/Tests/FoundationTypesTests"
         ),
     ]
 )
