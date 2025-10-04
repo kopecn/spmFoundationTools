@@ -194,8 +194,8 @@ struct WaveformChartDemoView: View {
         }
 
         return [
-            DoubleWaveform1D(values: sineValues, dt: dt),
-            DoubleWaveform1D(values: cosineValues, dt: dt),
+            DoubleWaveform1D(values: sineValues, dt: dt, t0: nil),
+            DoubleWaveform1D(values: cosineValues, dt: dt, t0: nil),
         ]
     }
 
@@ -216,8 +216,8 @@ struct WaveformChartDemoView: View {
         }
 
         return [
-            DoubleWaveform1D(values: whiteNoise, dt: dt),
-            DoubleWaveform1D(values: filteredNoise, dt: dt),
+            DoubleWaveform1D(values: whiteNoise, dt: dt, t0: nil),
+            DoubleWaveform1D(values: filteredNoise, dt: dt, t0: nil),
         ]
     }
 
@@ -238,8 +238,8 @@ struct WaveformChartDemoView: View {
         }
 
         return [
-            DoubleWaveform1D(values: square1, dt: dt),
-            DoubleWaveform1D(values: square2, dt: dt),
+            DoubleWaveform1D(values: square1, dt: dt, t0: nil),
+            DoubleWaveform1D(values: square2, dt: dt, t0: nil),
         ]
     }
 
@@ -257,8 +257,8 @@ struct WaveformChartDemoView: View {
         let invertedSawtooth = sawtooth.map { -$0 * 0.7 }
 
         return [
-            DoubleWaveform1D(values: sawtooth, dt: dt),
-            DoubleWaveform1D(values: invertedSawtooth, dt: dt),
+            DoubleWaveform1D(values: sawtooth, dt: dt, t0: nil),
+            DoubleWaveform1D(values: invertedSawtooth, dt: dt, t0: nil),
         ]
     }
 
@@ -292,9 +292,9 @@ struct WaveformChartDemoView: View {
         }
 
         return [
-            DoubleWaveform1D(values: signalA, dt: dt),
-            DoubleWaveform1D(values: signalB, dt: dt),
-            DoubleWaveform1D(values: signalC, dt: dt),
+            DoubleWaveform1D(values: signalA, dt: dt, t0: nil),
+            DoubleWaveform1D(values: signalB, dt: dt, t0: nil),
+            DoubleWaveform1D(values: signalC, dt: dt, t0: nil),
         ]
     }
 }

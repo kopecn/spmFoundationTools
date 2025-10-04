@@ -42,8 +42,16 @@ public struct WaveformPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Send
     /// The absolute start time of the first sample
     public var t0: Date?
 
-    /// Initialize with all parameters
+    /// Initialize a pose waveform
+    /// - Parameters:
+    ///   - positions: The sampled position values
+    ///   - quaternions: The sampled quaternion values
+    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample
+    /// - Precondition: dt must be greater than 0
+    /// - Note: If positions and quaternions have different counts, `isValid` will be false and `sampleCount` will return the minimum
     public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: TimeInterval, t0: Date?) {
+        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.positions = positions
         self.quaternions = quaternions
         self.dt = dt
@@ -247,11 +255,23 @@ extension WaveformPose {
         positionWaveform: WaveformPosition<T>,
         quaternionWaveform: WaveformQuaternion<T>
     ) -> WaveformPose<T>? {
-        guard
-            positionWaveform.values.count == quaternionWaveform.values.count
-                && abs(positionWaveform.dt - quaternionWaveform.dt) < 1e-10
-                && positionWaveform.t0 == quaternionWaveform.t0
-        else {
+        // Check sample counts match
+        guard positionWaveform.values.count == quaternionWaveform.values.count else {
+            return nil
+        }
+
+        // Compare dt with relative tolerance
+        let dtEqual: Bool
+        if positionWaveform.dt == 0 && quaternionWaveform.dt == 0 {
+            dtEqual = true
+        } else if positionWaveform.dt == 0 || quaternionWaveform.dt == 0 {
+            dtEqual = abs(positionWaveform.dt - quaternionWaveform.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(positionWaveform.dt - quaternionWaveform.dt) / max(abs(positionWaveform.dt), abs(quaternionWaveform.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        guard dtEqual && positionWaveform.t0 == quaternionWaveform.t0 else {
             return nil
         }
 
@@ -266,7 +286,18 @@ extension WaveformPose {
     /// Append another pose waveform to this one
     /// Both waveforms must have the same sampling rate
     public mutating func append(_ other: WaveformPose<T>) throws {
-        guard abs(self.dt - other.dt) < 1e-10 else {
+        // Compare dt with relative tolerance
+        let dtEqual: Bool
+        if self.dt == 0 && other.dt == 0 {
+            dtEqual = true
+        } else if self.dt == 0 || other.dt == 0 {
+            dtEqual = abs(self.dt - other.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(self.dt - other.dt) / max(abs(self.dt), abs(other.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        guard dtEqual else {
             throw WaveformError.incompatibleSamplingRates
         }
 
@@ -285,8 +316,25 @@ extension WaveformPose {
 // MARK: - Equatable
 extension WaveformPose: Equatable {
     public static func == (lhs: WaveformPose<T>, rhs: WaveformPose<T>) -> Bool {
-        return lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions && abs(lhs.dt - rhs.dt) < 1e-10
-            && lhs.t0 == rhs.t0
+        // Compare positions and quaternions arrays
+        guard lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions else { return false }
+
+        // Compare dt with appropriate tolerance for TimeInterval (Double)
+        // Use relative tolerance for better handling of different magnitudes
+        let dtEqual: Bool
+        if lhs.dt == 0 && rhs.dt == 0 {
+            dtEqual = true
+        } else if lhs.dt == 0 || rhs.dt == 0 {
+            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        // Compare t0
+        guard lhs.t0 == rhs.t0 else { return false }
+
+        return dtEqual
     }
 }
 

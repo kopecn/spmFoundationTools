@@ -351,6 +351,7 @@ struct Waveform1DCodableTests {
 
         #expect(decodedWaveform.values == originalWaveform.values)
         #expect(decodedWaveform.dt == originalWaveform.dt)
+        // Milliseconds encoding should preserve precision to milliseconds
         #expect(abs(decodedWaveform.t0!.timeIntervalSince(originalWaveform.t0!)) < 0.001)
     }
 
@@ -423,6 +424,7 @@ struct Waveform1DCodableTests {
 
         #expect(loadedWaveform.values == originalWaveform.values)
         #expect(loadedWaveform.dt == originalWaveform.dt)
+        // Milliseconds encoding should preserve precision to milliseconds
         #expect(abs(loadedWaveform.t0!.timeIntervalSince(originalWaveform.t0!)) < 0.001)
     }
 
@@ -538,7 +540,7 @@ struct Waveform1DCodableTests {
         let jsonData = try waveform.toJSONData()
         let decodedWaveform = try DoubleWaveform1D.from(jsonData: jsonData)
 
-        // ISO8601 should preserve reasonable precision
+        // Milliseconds encoding should preserve precision to milliseconds
         #expect(abs(decodedWaveform.t0!.timeIntervalSince(preciseDate)) < 0.001)
     }
 
@@ -580,6 +582,44 @@ struct Waveform1DCodableTests {
 
         #expect(throws: Error.self) {
             try DoubleWaveform1D.load(from: incompleteFileURL)
+        }
+    }
+
+    @Test("File error handling - invalid dt value (negative)")
+    func fileErrorHandlingInvalidDtNegative() throws {
+        let tempDir = try createTempDirectory()
+        defer { try? cleanupTempDirectory(tempDir) }
+
+        let invalidFileURL = tempDir.appendingPathComponent("invalid_dt.json")
+        let invalidJSON = """
+            {
+                "values": [1.0, 2.0, 3.0],
+                "dt": -0.5
+            }
+            """
+        try invalidJSON.write(to: invalidFileURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: WaveformCodingError.self) {
+            try DoubleWaveform1D.load(from: invalidFileURL)
+        }
+    }
+
+    @Test("File error handling - invalid dt value (zero)")
+    func fileErrorHandlingInvalidDtZero() throws {
+        let tempDir = try createTempDirectory()
+        defer { try? cleanupTempDirectory(tempDir) }
+
+        let invalidFileURL = tempDir.appendingPathComponent("zero_dt.json")
+        let invalidJSON = """
+            {
+                "values": [1.0, 2.0, 3.0],
+                "dt": 0.0
+            }
+            """
+        try invalidJSON.write(to: invalidFileURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: WaveformCodingError.self) {
+            try DoubleWaveform1D.load(from: invalidFileURL)
         }
     }
 

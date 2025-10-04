@@ -17,6 +17,14 @@ extension WaveformPose: Codable {
         quaternions = try container.decode([Quaternion<T>].self, forKey: .quaternions)
         dt = try container.decode(TimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
+
+        // Validate dt is positive
+        guard dt > 0 else {
+            throw WaveformCodingError.invalidFileFormat
+        }
+
+        // Note: We allow positions and quaternions to have different counts for flexibility
+        // The isValid property can be used to check if they match
     }
 
     public func encode(to encoder: Encoder) throws {

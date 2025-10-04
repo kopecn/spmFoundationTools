@@ -15,6 +15,11 @@ extension WaveformQuaternion: Codable {
         values = try container.decode([Quaternion<T>].self, forKey: .values)
         dt = try container.decode(TimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
+
+        // Validate dt is positive
+        guard dt > 0 else {
+            throw WaveformCodingError.invalidFileFormat
+        }
     }
 
     public func encode(to encoder: Encoder) throws {

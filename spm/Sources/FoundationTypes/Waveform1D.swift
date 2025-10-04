@@ -33,21 +33,17 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
     /// The absolute start time of the first sample
     public var t0: Date?
 
-    /// Initialize with all parameters
-    public init(values: [T], dt: TimeInterval, t0: Date?) {
+    /// Initialize a waveform
+    /// - Parameters:
+    ///   - values: The sampled data values
+    ///   - dt: The time interval between samples in seconds (must be positive, defaults to 1.0)
+    ///   - t0: The absolute start time of the first sample (optional)
+    /// - Precondition: dt must be greater than 0
+    public init(values: [T], dt: TimeInterval = 1.0, t0: Date? = nil) {
+        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
         self.t0 = t0
-    }
-
-    /// Initialize with values only, using default dt=1.0 and t0=nil
-    public init(values: [T]) {
-        self.init(values: values, dt: 1.0, t0: nil)
-    }
-
-    /// Initialize with values and dt, using default t0=nil
-    public init(values: [T], dt: TimeInterval) {
-        self.init(values: values, dt: dt, t0: nil)
     }
 
     // MARK: - Computed Properties
@@ -171,7 +167,25 @@ extension Waveform1D where T: SignedInteger {
 // MARK: - Equatable
 extension Waveform1D: Equatable {
     public static func == (lhs: Waveform1D<T>, rhs: Waveform1D<T>) -> Bool {
-        return lhs.values == rhs.values && abs(lhs.dt - rhs.dt) < 1e-10 && lhs.t0 == rhs.t0
+        // Compare values array
+        guard lhs.values == rhs.values else { return false }
+
+        // Compare dt with appropriate tolerance for TimeInterval (Double)
+        // Use relative tolerance for better handling of different magnitudes
+        let dtEqual: Bool
+        if lhs.dt == 0 && rhs.dt == 0 {
+            dtEqual = true
+        } else if lhs.dt == 0 || rhs.dt == 0 {
+            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        // Compare t0
+        guard lhs.t0 == rhs.t0 else { return false }
+
+        return dtEqual
     }
 }
 

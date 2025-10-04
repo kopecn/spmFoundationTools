@@ -34,8 +34,14 @@ public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: 
     /// The absolute start time of the first sample
     public var t0: Date?
 
-    /// Initialize with all parameters
+    /// Initialize a position waveform
+    /// - Parameters:
+    ///   - values: The sampled position values
+    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample
+    /// - Precondition: dt must be greater than 0
     public init(values: [Position<T>], dt: TimeInterval, t0: Date?) {
+        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
         self.t0 = t0
@@ -160,10 +166,23 @@ extension WaveformPosition {
         y: Waveform1D<T>,
         z: Waveform1D<T>
     ) -> WaveformPosition<T>? {
-        guard
-            x.values.count == y.values.count && y.values.count == z.values.count
-                && abs(x.dt - y.dt) < 1e-10 && abs(y.dt - z.dt) < 1e-10
-        else {
+        // Check sample counts match
+        guard x.values.count == y.values.count && y.values.count == z.values.count else {
+            return nil
+        }
+
+        // Compare dt values with relative tolerance
+        let dtEqual: Bool
+        if x.dt == 0 && y.dt == 0 && z.dt == 0 {
+            dtEqual = true
+        } else {
+            let maxDt = max(x.dt, y.dt, z.dt)
+            let relativeDiffXY = abs(x.dt - y.dt) / maxDt
+            let relativeDiffYZ = abs(y.dt - z.dt) / maxDt
+            dtEqual = relativeDiffXY < 1e-10 && relativeDiffYZ < 1e-10
+        }
+
+        guard dtEqual else {
             return nil
         }
 
@@ -181,7 +200,18 @@ extension WaveformPosition {
     /// Append another position waveform to this one
     /// Both waveforms must have the same sampling rate
     public mutating func append(_ other: WaveformPosition<T>) throws {
-        guard abs(self.dt - other.dt) < 1e-10 else {
+        // Compare dt with relative tolerance
+        let dtEqual: Bool
+        if self.dt == 0 && other.dt == 0 {
+            dtEqual = true
+        } else if self.dt == 0 || other.dt == 0 {
+            dtEqual = abs(self.dt - other.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(self.dt - other.dt) / max(abs(self.dt), abs(other.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        guard dtEqual else {
             throw WaveformError.incompatibleSamplingRates
         }
 
@@ -199,7 +229,25 @@ extension WaveformPosition {
 // MARK: - Equatable
 extension WaveformPosition: Equatable {
     public static func == (lhs: WaveformPosition<T>, rhs: WaveformPosition<T>) -> Bool {
-        return lhs.values == rhs.values && abs(lhs.dt - rhs.dt) < 1e-10 && lhs.t0 == rhs.t0
+        // Compare values array
+        guard lhs.values == rhs.values else { return false }
+
+        // Compare dt with appropriate tolerance for TimeInterval (Double)
+        // Use relative tolerance for better handling of different magnitudes
+        let dtEqual: Bool
+        if lhs.dt == 0 && rhs.dt == 0 {
+            dtEqual = true
+        } else if lhs.dt == 0 || rhs.dt == 0 {
+            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
+        } else {
+            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
+            dtEqual = relativeDifference < 1e-10
+        }
+
+        // Compare t0
+        guard lhs.t0 == rhs.t0 else { return false }
+
+        return dtEqual
     }
 }
 
