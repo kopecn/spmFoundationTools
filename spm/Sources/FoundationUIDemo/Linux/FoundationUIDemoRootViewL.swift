@@ -39,7 +39,7 @@ struct FoundationUIDemoRootViewL: View {
 
         // Cosine wave
         let cosineValues = (0..<sampleCount).map { i in
-            Darwin.cos(Double(i) * dt)
+            2 * Darwin.cos(Double(i) * dt)
         }
         let cosineWaveform = DoubleWaveform1D(values: cosineValues, dt: dt)
 
