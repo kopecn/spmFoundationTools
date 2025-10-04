@@ -94,19 +94,20 @@ public struct XUIBaseWaveformChart: View {
             }
             .padding(.horizontal, Int(margin))
 
-            // Chart with axis labels
+            // Chart with axis labels and tick labels
             HStack(spacing: 5) {
-                // Y-axis label
-                VStack {
-                    Spacer()
+                // Y-axis numeric labels and axis label
+                VStack(spacing: 2) {
+                    yAxisLabels
+
                     Text(yAxisLabel)
                         .font(.caption)
-                    Spacer()
+                        .frame(height: 20)
                 }
                 .frame(width: 60)
 
-                // Chart area with GeometryReader
-                VStack(spacing: 5) {
+                // Chart area with GeometryReader and X-axis labels
+                VStack(spacing: 2) {
                     GeometryReader { geometry in
                         chartArea(
                             chartWidth: Double(geometry.size.x),
@@ -114,9 +115,13 @@ public struct XUIBaseWaveformChart: View {
                         )
                     }
 
+                    // X-axis numeric labels
+                    xAxisLabels
+
                     // X-axis label
                     Text(xAxisLabel)
                         .font(.caption)
+                        .frame(height: 15)
                 }
             }
         }
@@ -153,10 +158,77 @@ public struct XUIBaseWaveformChart: View {
     }
 
     @ViewBuilder
+    private var yAxisLabels: some View {
+        // Get min/max values for Y-axis labels
+        let allValues = waveforms.flatMap { $0.values }
+        if let minValue = allValues.min(), let maxValue = allValues.max() {
+            let range = maxValue - minValue
+            let tickCount = 6
+
+            VStack(spacing: 0) {
+                ForEach(0..<tickCount) { i in
+                    let normalizedY = Double(i) / Double(tickCount - 1)
+                    let value = maxValue - (normalizedY * range)
+
+                    if i == 0 {
+                        Text(String(format: "%.2f", value))
+                            .font(.caption2)
+                            .frame(height: 10)
+                    } else if i == tickCount - 1 {
+                        Spacer()
+                        Text(String(format: "%.2f", value))
+                            .font(.caption2)
+                            .frame(height: 10)
+                    } else {
+                        Spacer()
+                        Text(String(format: "%.2f", value))
+                            .font(.caption2)
+                            .frame(height: 10)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var xAxisLabels: some View {
+        // Calculate time range for X-axis labels
+        let maxTime = waveforms.map { Double($0.values.count - 1) * $0.dt }.max() ?? 1.0
+        let tickCount = 5  // Fewer labels to avoid crowding
+
+        HStack(spacing: 0) {
+            ForEach(0..<tickCount) { i in
+                let normalizedX = Double(i) / Double(tickCount - 1)
+                let time = normalizedX * maxTime
+
+                if i == 0 {
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                } else if i == tickCount - 1 {
+                    Spacer()
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                } else {
+                    Spacer()
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                }
+            }
+        }
+        .frame(height: 15)
+    }
+
+    @ViewBuilder
     private func chartContent(chartWidth: Double, chartHeight: Double) -> some View {
         ZStack(alignment: .topLeading) {
             // Grid lines
             gridLines(chartWidth: chartWidth, chartHeight: chartHeight)
+
+            // Axis tick marks only (no labels here)
+            axisTickMarks(chartWidth: chartWidth, chartHeight: chartHeight)
 
             // Waveforms - overlay in Z
             waveformViews(chartWidth: chartWidth, chartHeight: chartHeight)
@@ -205,6 +277,30 @@ public struct XUIBaseWaveformChart: View {
         GridLinesShape(chartWidth: chartWidth, chartHeight: chartHeight)
             .stroke(.gray.opacity(0.3), style: StrokeStyle(width: 0.5))
             .frame(width: Int(chartWidth), height: Int(chartHeight))
+    }
+
+    @ViewBuilder
+    private func axisTickMarks(chartWidth: Double, chartHeight: Double) -> some View {
+        ZStack(alignment: .topLeading) {
+            // Y-axis tick marks
+            AxisTicksShape(
+                chartWidth: chartWidth,
+                chartHeight: chartHeight,
+                tickCount: 6,
+                isVertical: true
+            )
+            .stroke(.black, style: StrokeStyle(width: 1.0))
+
+            // X-axis tick marks
+            AxisTicksShape(
+                chartWidth: chartWidth,
+                chartHeight: chartHeight,
+                tickCount: 11,
+                isVertical: false
+            )
+            .stroke(.black, style: StrokeStyle(width: 1.0))
+        }
+        .frame(width: Int(chartWidth), height: Int(chartHeight))
     }
 
     @ViewBuilder
@@ -275,6 +371,47 @@ private struct BackgroundShape: Shape {
     }
 }
 
+// Shape for drawing axis tick marks
+private struct AxisTicksShape: Shape {
+    let chartWidth: Double
+    let chartHeight: Double
+    let tickCount: Int
+    let isVertical: Bool
+    let tickLength: Double = 5.0
+
+    nonisolated func path(in bounds: Path.Rect) -> Path {
+        var path = Path()
+
+        if isVertical {
+            // Y-axis ticks on the left edge - account for vertical padding
+            let verticalPadding = chartHeight * 0.1
+            let availableHeight = chartHeight - (2 * verticalPadding)
+
+            for i in 0..<tickCount {
+                // Labels go from top to bottom: maxValue (i=0) to minValue (i=tickCount-1)
+                // We want: i=0 → y=verticalPadding (top), i=tickCount-1 → y=verticalPadding+availableHeight (bottom)
+                // Simple linear interpolation from top to bottom
+                let t = Double(i) / Double(tickCount - 1)  // 0.0 to 1.0
+                let y = verticalPadding + (t * availableHeight)
+                path = path
+                    .move(to: SIMD2(x: 0, y: y))
+                    .addLine(to: SIMD2(x: tickLength, y: y))
+            }
+        } else {
+            // X-axis ticks should align with actual time values (0 to maxTime)
+            // Ticks at the data range, not evenly across the chart
+            for i in 0..<tickCount {
+                let x = Double(i) * chartWidth / Double(tickCount - 1)
+                path = path
+                    .move(to: SIMD2(x: x, y: chartHeight - tickLength))
+                    .addLine(to: SIMD2(x: x, y: chartHeight))
+            }
+        }
+
+        return path
+    }
+}
+
 // Shape for drawing all grid lines in a single path
 private struct GridLinesShape: Shape {
     let chartWidth: Double
@@ -283,9 +420,13 @@ private struct GridLinesShape: Shape {
     nonisolated func path(in bounds: Path.Rect) -> Path {
         var path = Path()
 
-        // Horizontal grid lines (6 lines)
+        // Horizontal grid lines (6 lines) - account for vertical padding
+        let verticalPadding = chartHeight * 0.1
+        let availableHeight = chartHeight - (2 * verticalPadding)
+
         for i in 0..<6 {
-            let y = Double(i) * chartHeight / 5
+            let t = Double(i) / 5.0
+            let y = verticalPadding + (t * availableHeight)
             path = path
                 .move(to: SIMD2(x: 0, y: y))
                 .addLine(to: SIMD2(x: chartWidth, y: y))
