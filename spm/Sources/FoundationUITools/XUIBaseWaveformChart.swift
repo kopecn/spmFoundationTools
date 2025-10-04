@@ -98,11 +98,6 @@ public struct XUIBaseWaveformChart: View {
             HStack(spacing: 5) {
                 // Y-axis numeric labels and axis label
                 VStack(spacing: 2) {
-                    GeometryReader { geom in
-                        // Chart height is the geometry height minus X-axis labels (15) and label (15) and spacing (4)
-                        let chartHeight = Double(geom.size.y) - 15 - 15 - 4
-                        yAxisLabels(chartHeight: chartHeight)
-                    }
 
                     Text(yAxisLabel)
                         .font(.caption)
@@ -118,9 +113,6 @@ public struct XUIBaseWaveformChart: View {
                             chartHeight: Double(geometry.size.y)
                         )
                     }
-
-                    // X-axis numeric labels
-                    xAxisLabels
 
                     // X-axis label
                     Text(xAxisLabel)
@@ -162,81 +154,6 @@ public struct XUIBaseWaveformChart: View {
     }
 
     @ViewBuilder
-    private func yAxisLabels(chartHeight: Double) -> some View {
-        // Get min/max values for Y-axis labels
-        let allValues = waveforms.flatMap { $0.values }
-        if let minValue = allValues.min(), let maxValue = allValues.max() {
-            let range = maxValue - minValue
-            let tickCount = 6
-            let verticalPadding = chartHeight * 0.1
-            let availableHeight = chartHeight - (2 * verticalPadding)
-
-            // Calculate exact spacing to match tick positions
-            // Ticks are at: verticalPadding + i * (availableHeight / (tickCount-1)) for i in 0..<tickCount
-            // Label centers need to align with tick positions
-            let gapCount = tickCount - 1
-            let tickSpacing = availableHeight / Double(gapCount)
-            let textHeight = 10.0
-
-            // VStack spacing is edge-to-edge, so we need: tickSpacing - textHeight
-            let vStackSpacing = tickSpacing - textHeight
-
-            VStack(spacing: Int(vStackSpacing)) {
-                // Top padding: distance from container top to top of first label
-                // First label top is at: verticalPadding - textHeight/2
-                Spacer()
-                    .frame(height: Int(verticalPadding - textHeight/2))
-
-                ForEach(Array(0..<tickCount)) { i in
-                    let normalizedY = Double(i) / Double(tickCount - 1)
-                    let value = maxValue - (normalizedY * range)
-
-                    Text(String(format: "%.2f", value))
-                        .font(.caption2)
-                        .frame(height: Int(textHeight))
-                }
-
-                // Bottom padding: distance from bottom of last label to container bottom
-                // Last label bottom is at: verticalPadding + availableHeight + textHeight/2
-                Spacer()
-                    .frame(height: Int(verticalPadding - textHeight/2))
-            }
-            .frame(height: Int(chartHeight))
-        }
-    }
-
-    @ViewBuilder
-    private var xAxisLabels: some View {
-        // Calculate time range for X-axis labels
-        let maxTime = waveforms.map { Double($0.values.count - 1) * $0.dt }.max() ?? 1.0
-        let tickCount = 5  // Fewer labels to avoid crowding
-
-        HStack(spacing: 0) {
-            ForEach(0..<tickCount) { i in
-                let normalizedX = Double(i) / Double(tickCount - 1)
-                let time = normalizedX * maxTime
-
-                if i == 0 {
-                    Text(String(format: "%.1f", time))
-                        .font(.caption2)
-                        .frame(width: 40)
-                } else if i == tickCount - 1 {
-                    Spacer()
-                    Text(String(format: "%.1f", time))
-                        .font(.caption2)
-                        .frame(width: 40)
-                } else {
-                    Spacer()
-                    Text(String(format: "%.1f", time))
-                        .font(.caption2)
-                        .frame(width: 40)
-                }
-            }
-        }
-        .frame(height: 15)
-    }
-
-    @ViewBuilder
     private func chartContent(chartWidth: Double, chartHeight: Double) -> some View {
         ZStack(alignment: .topLeading) {
             // Grid lines
@@ -258,6 +175,10 @@ public struct XUIBaseWaveformChart: View {
 
         if count > 0 {
             ZStack(alignment: .topLeading) {
+                // ForEach has a bug in it for ZStack rendering these as a VStack, doing this manually with a limit of 7 waveforms
+                // ForEach(0..<count) { i in
+                //     waveformPath(for: waveforms[i], color: colors[i], chartWidth: chartWidth, chartHeight: chartHeight)
+                // }
                 if count >= 1 {
                     waveformPath(for: waveforms[0], color: colors[0], chartWidth: chartWidth, chartHeight: chartHeight)
                 }
