@@ -20,7 +20,6 @@ public struct XUIBaseWaveformChart: View {
     private let yAxisLabel: String
 
     // Chart state
-    @State private var cursorPosition: Double = 0.5
     @State private var zoomScale: Double = 1.0
     @State private var panOffset: Double = 0.0
 
@@ -134,15 +133,8 @@ public struct XUIBaseWaveformChart: View {
 
             // Chart content
             chartContent(chartWidth: chartWidth, chartHeight: chartHeight)
-
-            // Vertical cursor
-            verticalCursor(chartWidth: chartWidth, chartHeight: chartHeight)
         }
         .frame(width: Int(chartWidth), height: Int(chartHeight))
-        .onTapGesture {
-            // Simple tap without location - just toggle cursor position
-            cursorPosition = cursorPosition < 0.5 ? 0.7 : 0.3
-        }
     }
 
     @ViewBuilder
@@ -216,13 +208,6 @@ public struct XUIBaseWaveformChart: View {
     }
 
     @ViewBuilder
-    private func verticalCursor(chartWidth: Double, chartHeight: Double) -> some View {
-        CursorShape(x: cursorPosition * chartWidth, chartHeight: chartHeight)
-            .stroke(.red.opacity(0.8), style: StrokeStyle(width: 2.0))
-            .frame(width: Int(chartWidth), height: Int(chartHeight))
-    }
-
-    @ViewBuilder
     private func waveformPath(for waveform: DoubleWaveform1D, color: Color, chartWidth: Double, chartHeight: Double) -> some View {
         let points = getWaveformPoints(for: waveform, chartWidth: chartWidth, chartHeight: chartHeight)
         WaveformShape(points: points, chartWidth: chartWidth, chartHeight: chartHeight)
@@ -287,18 +272,6 @@ private struct BackgroundShape: Shape {
     nonisolated func path(in bounds: Path.Rect) -> Path {
         Path()
             .addRectangle(Path.Rect(x: 0, y: 0, width: chartWidth, height: chartHeight))
-    }
-}
-
-// Shape for drawing the vertical cursor line
-private struct CursorShape: Shape {
-    let x: Double
-    let chartHeight: Double
-
-    nonisolated func path(in bounds: Path.Rect) -> Path {
-        Path()
-            .move(to: SIMD2(x: x, y: 0))
-            .addLine(to: SIMD2(x: x, y: chartHeight))
     }
 }
 
