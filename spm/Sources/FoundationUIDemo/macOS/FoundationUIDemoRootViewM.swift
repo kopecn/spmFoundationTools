@@ -2,10 +2,10 @@
 
 import SwiftUI
 import FoundationTypes
-import FoundationTools
+import FoundationUITools
 import UniformTypeIdentifiers
 
-struct FoundationUIDemoRootView: View {
+struct FoundationUIDemoRootViewM: View {
     @State private var selectedTab = 0
 
     var body: some View {
