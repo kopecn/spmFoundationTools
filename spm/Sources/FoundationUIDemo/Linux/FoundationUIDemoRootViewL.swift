@@ -21,7 +21,8 @@ struct FoundationUIDemoRootViewL: View {
             XUIBaseWaveformChart(
                 waveforms: createSampleWaveforms(),
                 labels: ["Sine", "Cosine"],
-                colors: [.blue, .red]
+                colors: [.blue, .red],
+                showCursor: true
             )
         }
         .padding()

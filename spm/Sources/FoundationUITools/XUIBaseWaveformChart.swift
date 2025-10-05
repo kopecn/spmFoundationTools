@@ -23,6 +23,10 @@ public struct XUIBaseWaveformChart: View {
     @State private var zoomScale: Double = 1.0
     @State private var panOffset: Double = 0.0
 
+    // Cursor state
+    private let showCursor: Bool
+    @State private var cursorPosition: Double = 0.5  // 0.0 to 1.0, normalized position
+
     // Chart dimensions (margins only, actual size from GeometryReader)
     private let margin: Double = 40
 
@@ -39,11 +43,13 @@ public struct XUIBaseWaveformChart: View {
         labels: [String]? = nil,
         colors: [Color]? = nil,
         xAxisLabel: String = "Time",
-        yAxisLabel: String = "Amplitude"
+        yAxisLabel: String = "Amplitude",
+        showCursor: Bool = false
     ) {
         self.waveforms = waveforms
         self.xAxisLabel = xAxisLabel
         self.yAxisLabel = yAxisLabel
+        self.showCursor = showCursor
 
         // Ensure labels array matches waveforms count
         if let providedLabels = labels {
@@ -113,13 +119,32 @@ public struct XUIBaseWaveformChart: View {
                             chartHeight: Double(geometry.size.y)
                         )
                     }
+                    xAxisLabels
+
+                    // Cursor value display (if cursor enabled)
+                    if showCursor {
+                        HStack(alignment: .center) {
+                            Text(xAxisLabel)
+                                .font(.caption)
+                                .frame(height: 15)
+                            Spacer()
+                                .frame(width: 20)
+                            cursorValueDisplay
+                                .frame(height: 20)
+                        }
+                    } else {
+                        Text(xAxisLabel)
+                            .font(.caption)
+                            .frame(height: 15)
+                    }
 
                     // X-axis label
-                    Text(xAxisLabel)
-                        .font(.caption)
-                        .frame(height: 15)
 
-                    xAxisLabels
+                    // Slider (if cursor enabled)
+                    if showCursor {
+                        Slider($cursorPosition, minimum: 0.0, maximum: 1.0)
+                            .frame(height: 14)
+                    }
                 }
             }
         }
@@ -136,6 +161,11 @@ public struct XUIBaseWaveformChart: View {
 
             // Chart content
             chartContent(chartWidth: chartWidth, chartHeight: chartHeight)
+
+            // Vertical cursor line (if cursor enabled)
+            if showCursor {
+                cursorLine(chartWidth: chartWidth, chartHeight: chartHeight)
+            }
         }
         .frame(width: Int(chartWidth), height: Int(chartHeight))
     }
@@ -172,7 +202,6 @@ public struct XUIBaseWaveformChart: View {
         .frame(width: Int(chartWidth), height: Int(chartHeight))
     }
 
-
     // MARK: - Axis Views
     @ViewBuilder
     private func yAxisViews(chartWidth: Double, chartHeight: Double) -> some View {
@@ -204,7 +233,7 @@ public struct XUIBaseWaveformChart: View {
             }
         }
     }
-        @ViewBuilder
+    @ViewBuilder
     private var xAxisLabels: some View {
         // Calculate time range for X-axis labels
         let maxTime = waveforms.map { Double($0.values.count - 1) * $0.dt }.max() ?? 1.0
@@ -366,6 +395,91 @@ public struct XUIBaseWaveformChart: View {
         }
 
         return points
+    }
+
+    // MARK: - Cursor Views
+    @ViewBuilder
+    private func cursorLine(chartWidth: Double, chartHeight: Double) -> some View {
+        let x = cursorPosition * chartWidth
+        CursorLineShape(x: x, chartHeight: chartHeight)
+            .stroke(.orange, style: StrokeStyle(width: 2.0))
+            .frame(width: Int(chartWidth), height: Int(chartHeight))
+    }
+
+    @ViewBuilder
+    private var cursorValueDisplay: some View {
+        let maxTime = waveforms.map { Double($0.values.count - 1) * $0.dt }.max() ?? 1.0
+        let timeAtCursor = cursorPosition * maxTime
+        let yValues = getYValuesAtCursor(time: timeAtCursor)
+
+        HStack(spacing: 10) {
+            Text("t=\(String(format: "%.2f", timeAtCursor))")
+                .font(.caption)
+                .fontWeight(.semibold)
+
+            // Manually build value labels to avoid ForEach limitations, limiting to 8 waveforms
+            let count = min(yValues.count, colors.count, labels.count)
+            if count >= 1 {
+                Text("\(labels[0]): \(String(format: "%.2f", yValues[0]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[0])
+            }
+            if count >= 2 {
+                Text("\(labels[1]): \(String(format: "%.2f", yValues[1]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[1])
+            }
+            if count >= 3 {
+                Text("\(labels[2]): \(String(format: "%.2f", yValues[2]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[2])
+            }
+            if count >= 4 {
+                Text("\(labels[3]): \(String(format: "%.2f", yValues[3]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[3])
+            }
+            if count >= 5 {
+                Text("\(labels[4]): \(String(format: "%.2f", yValues[4]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[4])
+            }
+            if count >= 6 {
+                Text("\(labels[5]): \(String(format: "%.2f", yValues[5]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[5])
+            }
+            if count >= 7 {
+                Text("\(labels[6]): \(String(format: "%.2f", yValues[6]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[6])
+            }
+            if count >= 8 {
+                Text("\(labels[7]): \(String(format: "%.2f", yValues[7]))")
+                    .font(.caption2)
+                    .foregroundColor(colors[7])
+            }
+        }
+    }
+
+    private func getYValuesAtCursor(time: Double) -> [Double] {
+        waveforms.map { waveform in
+            let index = Int(time / waveform.dt)
+            let clampedIndex = min(max(0, index), waveform.values.count - 1)
+            return waveform.values[clampedIndex]
+        }
+    }
+}
+
+// Shape for drawing the cursor line
+private struct CursorLineShape: Shape {
+    let x: Double
+    let chartHeight: Double
+
+    nonisolated func path(in bounds: Path.Rect) -> Path {
+        Path()
+            .move(to: SIMD2(x: x, y: 0))
+            .addLine(to: SIMD2(x: x, y: chartHeight))
     }
 }
 
