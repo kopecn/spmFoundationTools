@@ -33,13 +33,13 @@ struct FoundationUIDemoRootViewL: View {
 
         // Sine wave
         let sineValues = (0..<sampleCount).map { i in
-            Darwin.sin(Double(i) * dt)
+            Darwin.sin(Double(i) * dt) + 1
         }
         let sineWaveform = DoubleWaveform1D(values: sineValues, dt: dt)
 
         // Cosine wave
         let cosineValues = (0..<sampleCount).map { i in
-            2 * Darwin.cos(Double(i) * dt)
+            2 * Darwin.cos(Double(i) * dt) + 2
         }
         let cosineWaveform = DoubleWaveform1D(values: cosineValues, dt: dt)
 

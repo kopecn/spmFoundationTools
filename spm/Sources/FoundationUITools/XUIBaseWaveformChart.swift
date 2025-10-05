@@ -1,7 +1,7 @@
 import DefaultBackend
+import Foundation
 import FoundationTypes
 import SwiftCrossUI
-import Foundation
 
 // Simple point structure for SwiftCrossUI compatibility
 private struct Point {
@@ -118,6 +118,8 @@ public struct XUIBaseWaveformChart: View {
                     Text(xAxisLabel)
                         .font(.caption)
                         .frame(height: 15)
+
+                    xAxisLabels
                 }
             }
         }
@@ -164,10 +166,76 @@ public struct XUIBaseWaveformChart: View {
 
             // Waveforms - overlay in Z
             waveformViews(chartWidth: chartWidth, chartHeight: chartHeight)
+
+            yAxisViews(chartWidth: chartWidth, chartHeight: chartHeight)
         }
         .frame(width: Int(chartWidth), height: Int(chartHeight))
     }
 
+
+    // MARK: - Axis Views
+    @ViewBuilder
+    private func yAxisViews(chartWidth: Double, chartHeight: Double) -> some View {
+        VStack(alignment: .leading) {
+            let allValues = waveforms.flatMap { $0.values }
+            if let minValue = allValues.min(), let maxValue = allValues.max() {
+                let tickCount = 6
+                let range = maxValue - minValue
+
+                let verticalPadding = chartHeight * 0.1
+
+                Spacer()
+                    .frame(height: Int(verticalPadding) - 14)
+
+                ForEach(Array(0..<tickCount)) { i in
+                    let normalizedY = Double(i) / Double(tickCount - 1)
+                    let value = maxValue - (normalizedY * range)
+
+                    Text(String(format: "%.2f", value))
+                        .font(.caption2)
+                        .frame(height: 14)
+                    if i != tickCount - 1 {
+                        Spacer()
+                    } else {
+                        Spacer()
+                            .frame(height: Int(verticalPadding) - 14)
+                    }
+                }
+            }
+        }
+    }
+        @ViewBuilder
+    private var xAxisLabels: some View {
+        // Calculate time range for X-axis labels
+        let maxTime = waveforms.map { Double($0.values.count - 1) * $0.dt }.max() ?? 1.0
+        let tickCount = 5  // Fewer labels to avoid crowding
+
+        HStack(spacing: 0) {
+            ForEach(0..<tickCount) { i in
+                let normalizedX = Double(i) / Double(tickCount - 1)
+                let time = normalizedX * maxTime
+
+                if i == 0 {
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                } else if i == tickCount - 1 {
+                    Spacer()
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                } else {
+                    Spacer()
+                    Text(String(format: "%.1f", time))
+                        .font(.caption2)
+                        .frame(width: 40)
+                }
+            }
+        }
+        .frame(height: 15)
+    }
+
+    // MARK: - Waveform Views
     @ViewBuilder
     private func waveformViews(chartWidth: Double, chartHeight: Double) -> some View {
         // Manually build waveform overlays to avoid ForEach stacking issues
@@ -240,12 +308,17 @@ public struct XUIBaseWaveformChart: View {
     }
 
     @ViewBuilder
-    private func waveformPath(for waveform: DoubleWaveform1D, color: Color, chartWidth: Double, chartHeight: Double) -> some View {
+    private func waveformPath(
+        for waveform: DoubleWaveform1D,
+        color: Color,
+        chartWidth: Double,
+        chartHeight: Double
+    ) -> some View {
         let points = getWaveformPoints(for: waveform, chartWidth: chartWidth, chartHeight: chartHeight)
         WaveformShape(points: points, chartWidth: chartWidth, chartHeight: chartHeight)
             .stroke(color, style: StrokeStyle(width: 1.5))
     }
-    
+
     private func getWaveformPoints(for waveform: DoubleWaveform1D, chartWidth: Double, chartHeight: Double) -> [Point] {
         guard !waveform.values.isEmpty else { return [] }
 
@@ -256,8 +329,8 @@ public struct XUIBaseWaveformChart: View {
         // Find min/max for normalization
         let allValues = waveforms.flatMap { $0.values }
         guard let minValue = allValues.min(),
-              let maxValue = allValues.max(),
-              maxValue != minValue
+            let maxValue = allValues.max(),
+            maxValue != minValue
         else { return [] }
 
         // Calculate time range
@@ -329,7 +402,8 @@ private struct AxisTicksShape: Shape {
                 // Simple linear interpolation from top to bottom
                 let t = Double(i) / Double(tickCount - 1)  // 0.0 to 1.0
                 let y = verticalPadding + (t * availableHeight)
-                path = path
+                path =
+                    path
                     .move(to: SIMD2(x: 0, y: y))
                     .addLine(to: SIMD2(x: tickLength, y: y))
             }
@@ -338,7 +412,8 @@ private struct AxisTicksShape: Shape {
             // Ticks at the data range, not evenly across the chart
             for i in 0..<tickCount {
                 let x = Double(i) * chartWidth / Double(tickCount - 1)
-                path = path
+                path =
+                    path
                     .move(to: SIMD2(x: x, y: chartHeight - tickLength))
                     .addLine(to: SIMD2(x: x, y: chartHeight))
             }
@@ -363,7 +438,8 @@ private struct GridLinesShape: Shape {
         for i in 0..<6 {
             let t = Double(i) / 5.0
             let y = verticalPadding + (t * availableHeight)
-            path = path
+            path =
+                path
                 .move(to: SIMD2(x: 0, y: y))
                 .addLine(to: SIMD2(x: chartWidth, y: y))
         }
@@ -371,7 +447,8 @@ private struct GridLinesShape: Shape {
         // Vertical grid lines (11 lines)
         for i in 0..<11 {
             let x = Double(i) * chartWidth / 10
-            path = path
+            path =
+                path
                 .move(to: SIMD2(x: x, y: 0))
                 .addLine(to: SIMD2(x: x, y: chartHeight))
         }
