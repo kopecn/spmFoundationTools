@@ -16,6 +16,4 @@ flowchart TD
     FoundationToolsTests{{FoundationToolsTests}}-->FoundationTools
     FoundationTypes-->kvSIMD[[kvSIMD]]
     FoundationTypesTests{{FoundationTypesTests}}-->FoundationTypes
-    FoundationUIDemo([FoundationUIDemo])-->FoundationTools
-    FoundationUIDemo([FoundationUIDemo])-->OpenCombine[[OpenCombine]]
 ```
