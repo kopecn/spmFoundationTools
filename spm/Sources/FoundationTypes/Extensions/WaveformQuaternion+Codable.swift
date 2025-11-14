@@ -125,7 +125,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
         from url: URL,
         hasHeader: Bool = true
     ) throws -> WaveformQuaternion<T> {
-        let csvContent = try String(contentsOf: url)
+        let csvContent = try String(contentsOf: url, encoding: .utf8)
         let lines = csvContent.components(separatedBy: .newlines).filter { !$0.isEmpty }
 
         guard !lines.isEmpty else {

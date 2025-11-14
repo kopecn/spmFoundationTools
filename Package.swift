@@ -6,7 +6,10 @@ import PackageDescription
 let package = Package(
     name: "FoundationTools",
     platforms: [
-        .macOS(.v14)  // Minimum macOS version
+        .macOS(.v14),  // Minimum macOS version
+        .iOS(.v16),
+        .tvOS(.v16),
+        .watchOS(.v9)
     ],
     products: [
         .library(

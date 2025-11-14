@@ -107,8 +107,8 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - angle: The rotation angle in radians
     public init(axis: SIMD3<T>, angle: T) where T == Double {
         let halfAngle = angle * 0.5
-        let sinHalfAngle = simd.sin(halfAngle)  // SIMD scalar sin
-        let cosHalfAngle = simd.cos(halfAngle)  // SIMD scalar cos
+        let sinHalfAngle = sin(halfAngle)
+        let cosHalfAngle = cos(halfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
@@ -126,8 +126,8 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - angle: The rotation angle in radians
     public init(axis: SIMD3<T>, angle: T) where T == Float {
         let halfAngle = angle * 0.5
-        let sinHalfAngle = simd.sin(halfAngle)  // SIMD scalar sin
-        let cosHalfAngle = simd.cos(halfAngle)  // SIMD scalar cos
+        let sinHalfAngle = sin(halfAngle)
+        let cosHalfAngle = cos(halfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
