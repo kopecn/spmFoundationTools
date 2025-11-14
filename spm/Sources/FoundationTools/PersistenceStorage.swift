@@ -27,16 +27,24 @@ public actor PersistenceStorage {
     // MARK: - Configuration
 
     private static let filename = ".sensible_ur_touch_config.json"
+    private static let allKeysStorageKey = "_PersistenceStorage_AllKeys"
 
     // MARK: - In-Memory Cache
 
     private var cache: [String: Any] = [:]
     private var isDirty = false
+    private var allStoredKeys: Set<String> = []
 
     // MARK: - Initialization
 
     private init() {
-        #if !os(macOS)
+        #if os(macOS)
+        // Load the set of all stored keys
+        if let keysData = UserDefaults.standard.data(forKey: Self.allKeysStorageKey),
+           let keys = try? JSONDecoder().decode(Set<String>.self, from: keysData) {
+            self.allStoredKeys = keys
+        }
+        #else
         // On Linux, load the entire JSON file into cache on init
         self.cache = Self.loadLinuxStorageSync()
         #endif
@@ -47,6 +55,7 @@ public actor PersistenceStorage {
     /// Save a value for a type-safe key
     public func save<T: Codable & Sendable>(_ value: T, for key: PersistenceKey<T>) {
         cache[key.name] = value
+        allStoredKeys.insert(key.name)
         isDirty = true
         persistCache()
     }
@@ -71,15 +80,36 @@ public actor PersistenceStorage {
     /// Remove a value for a key
     public func remove<T: Codable & Sendable>(for key: PersistenceKey<T>) {
         cache.removeValue(forKey: key.name)
+        allStoredKeys.remove(key.name)
+
+        #if os(macOS)
+        // Also remove from UserDefaults
+        UserDefaults.standard.removeObject(forKey: key.name)
+        // Update the stored keys set
         isDirty = true
         persistCache()
+        #else
+        isDirty = true
+        persistCache()
+        #endif
     }
 
     /// Clear all cached and persisted data
     public func clearAll() {
+        #if os(macOS)
+        // Remove all stored keys from UserDefaults (not just cached ones)
+        for key in allStoredKeys {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        // Also remove the keys tracking entry
+        UserDefaults.standard.removeObject(forKey: Self.allKeysStorageKey)
+        cache.removeAll()
+        allStoredKeys.removeAll()
+        #else
         cache.removeAll()
         isDirty = true
         persistCache()
+        #endif
     }
 
     // MARK: - Private Persistence Implementation
@@ -91,6 +121,10 @@ public actor PersistenceStorage {
         // Save each cached value to UserDefaults
         for (key, value) in cache {
             saveToUserDefaultsAny(value, forKey: key)
+        }
+        // Save the set of all stored keys
+        if let keysData = try? JSONEncoder().encode(allStoredKeys) {
+            UserDefaults.standard.set(keysData, forKey: Self.allKeysStorageKey)
         }
         #else
         // Save entire cache to JSON file
