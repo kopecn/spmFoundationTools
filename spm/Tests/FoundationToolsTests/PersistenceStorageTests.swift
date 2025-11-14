@@ -177,22 +177,24 @@ final class PersistenceStorageTests: XCTestCase {
         await PersistenceStorage.shared.save(42, for: key2)
         await PersistenceStorage.shared.save(true, for: key3)
 
-
-        // FIXME: - commented out -- come back here and fix 
-        // 'await' in an autoclosure that does not support concurrencySourceKit
         // Verify they're saved
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key1), "value1")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key2), 42)
-        // XCTAssertTrue(await PersistenceStorage.shared.load(for: key3))
+        let loaded1 = await PersistenceStorage.shared.load(for: key1)
+        let loaded2 = await PersistenceStorage.shared.load(for: key2)
+        let loaded3 = await PersistenceStorage.shared.load(for: key3)
+        XCTAssertEqual(loaded1, "value1")
+        XCTAssertEqual(loaded2, 42)
+        XCTAssertTrue(loaded3)
 
-        // // Clear all
-        // await PersistenceStorage.shared.clearAll()
+        // Clear all
+        await PersistenceStorage.shared.clearAll()
 
-        // // Verify all return default values
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key1), "default1")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key2), 0)
-        // XCTAssertFalse(await PersistenceStorage.shared.load(for: key3))
-        // FIXME: - End of FIXME
+        // Verify all return default values
+        let loadedAfterClear1 = await PersistenceStorage.shared.load(for: key1)
+        let loadedAfterClear2 = await PersistenceStorage.shared.load(for: key2)
+        let loadedAfterClear3 = await PersistenceStorage.shared.load(for: key3)
+        XCTAssertEqual(loadedAfterClear1, "default1")
+        XCTAssertEqual(loadedAfterClear2, 0)
+        XCTAssertFalse(loadedAfterClear3)
     }
 
     // MARK: - Custom Codable Type Tests
@@ -355,21 +357,23 @@ final class PersistenceStorageTests: XCTestCase {
         await PersistenceStorage.shared.save("value2", for: key2)
         await PersistenceStorage.shared.save("value3", for: key3)
 
+        let loaded1 = await PersistenceStorage.shared.load(for: key1)
+        let loaded2 = await PersistenceStorage.shared.load(for: key2)
+        let loaded3 = await PersistenceStorage.shared.load(for: key3)
+        XCTAssertEqual(loaded1, "value1")
+        XCTAssertEqual(loaded2, "value2")
+        XCTAssertEqual(loaded3, "value3")
 
-        // FIXME: - commented out -- come back here and fix 
-        // 'await' in an autoclosure that does not support concurrencySourceKit
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key1), "value1")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key2), "value2")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key3), "value3")
+        // Modify one key
+        await PersistenceStorage.shared.save("modified1", for: key1)
 
-        // // Modify one key
-        // await PersistenceStorage.shared.save("modified1", for: key1)
-
-        // // Others should remain unchanged
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key1), "modified1")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key2), "value2")
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key3), "value3")
-        // FIXME: - End of FIXME
+        // Others should remain unchanged
+        let modifiedLoaded1 = await PersistenceStorage.shared.load(for: key1)
+        let modifiedLoaded2 = await PersistenceStorage.shared.load(for: key2)
+        let modifiedLoaded3 = await PersistenceStorage.shared.load(for: key3)
+        XCTAssertEqual(modifiedLoaded1, "modified1")
+        XCTAssertEqual(modifiedLoaded2, "value2")
+        XCTAssertEqual(modifiedLoaded3, "value3")
     }
 
     func testSameKeyNameDifferentTypes() async {
@@ -403,13 +407,13 @@ final class PersistenceStorageTests: XCTestCase {
             }
         }
 
-        // FIXME: - commented out -- come back here and fix 
-        // 'await' in an autoclosure that does not support concurrencySourceKit
         // All values should be saved correctly
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key1), 100)
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key2), 200)
-        // XCTAssertEqual(await PersistenceStorage.shared.load(for: key3), 300)
-        // FIXME: - End of FIXME
+        let concurrentLoaded1 = await PersistenceStorage.shared.load(for: key1)
+        let concurrentLoaded2 = await PersistenceStorage.shared.load(for: key2)
+        let concurrentLoaded3 = await PersistenceStorage.shared.load(for: key3)
+        XCTAssertEqual(concurrentLoaded1, 100)
+        XCTAssertEqual(concurrentLoaded2, 200)
+        XCTAssertEqual(concurrentLoaded3, 300)
     }
 
     func testConcurrentLoads() async {
