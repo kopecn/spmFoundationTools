@@ -30,11 +30,13 @@ final class PersistenceStorageTests: XCTestCase {
         let stringKey = PersistenceKey(name: "string.key", defaultValue: "text")
         let intKey = PersistenceKey(name: "int.key", defaultValue: 42)
         let doubleKey = PersistenceKey(name: "double.key", defaultValue: 3.14)
+        let floatKey = PersistenceKey(name: "float.key", defaultValue: Float(2.71))
         let boolKey = PersistenceKey(name: "bool.key", defaultValue: true)
 
         XCTAssertEqual(stringKey.defaultValue, "text")
         XCTAssertEqual(intKey.defaultValue, 42)
         XCTAssertEqual(doubleKey.defaultValue, 3.14)
+        XCTAssertEqual(floatKey.defaultValue, Float(2.71))
         XCTAssertEqual(boolKey.defaultValue, true)
     }
 
@@ -67,6 +69,15 @@ final class PersistenceStorageTests: XCTestCase {
         XCTAssertEqual(loaded, 3.14159, accuracy: 0.00001)
     }
 
+    func testSaveAndLoadFloat() async {
+        let key = PersistenceKey(name: "test.float", defaultValue: Float(0.0))
+
+        await PersistenceStorage.shared.save(Float(3.14159), for: key)
+        let loaded = await PersistenceStorage.shared.load(for: key)
+
+        XCTAssertEqual(loaded, Float(3.14159), accuracy: 0.00001)
+    }
+
     func testSaveAndLoadBool() async {
         let trueKey = PersistenceKey(name: "test.bool.true", defaultValue: false)
         let falseKey = PersistenceKey(name: "test.bool.false", defaultValue: true)
@@ -84,15 +95,19 @@ final class PersistenceStorageTests: XCTestCase {
     func testSaveAndLoadNegativeNumbers() async {
         let intKey = PersistenceKey(name: "test.negative.int", defaultValue: 0)
         let doubleKey = PersistenceKey(name: "test.negative.double", defaultValue: 0.0)
+        let floatKey = PersistenceKey(name: "test.negative.float", defaultValue: Float(0.0))
 
         await PersistenceStorage.shared.save(-42, for: intKey)
         await PersistenceStorage.shared.save(-3.14, for: doubleKey)
+        await PersistenceStorage.shared.save(Float(-3.14), for: floatKey)
 
         let loadedInt = await PersistenceStorage.shared.load(for: intKey)
         let loadedDouble = await PersistenceStorage.shared.load(for: doubleKey)
+        let loadedFloat = await PersistenceStorage.shared.load(for: floatKey)
 
         XCTAssertEqual(loadedInt, -42)
         XCTAssertEqual(loadedDouble, -3.14, accuracy: 0.01)
+        XCTAssertEqual(loadedFloat, Float(-3.14), accuracy: 0.01)
     }
 
     // MARK: - Default Value Tests

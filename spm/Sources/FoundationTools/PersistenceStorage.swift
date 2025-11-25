@@ -223,6 +223,8 @@ public actor PersistenceStorage {
                 try container.encode(string)
             case let int as Int:
                 try container.encode(int)
+            case let float as Float:
+                try container.encode(float)
             case let double as Double:
                 try container.encode(double)
             case let bool as Bool:
@@ -316,6 +318,8 @@ public actor PersistenceStorage {
                 try container.encode(string)
             case let int as Int:
                 try container.encode(int)
+            case let float as Float:
+                try container.encode(float)
             case let double as Double:
                 try container.encode(double)
             case let bool as Bool:
