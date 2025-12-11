@@ -196,34 +196,6 @@ extension WaveformPosition {
 
         return WaveformPosition<T>(values: positions, dt: x.dt, t0: x.t0)
     }
-
-    /// Append another position waveform to this one
-    /// Both waveforms must have the same sampling rate
-    public mutating func append(_ other: WaveformPosition<T>) throws {
-        // Compare dt with relative tolerance
-        let dtEqual: Bool
-        if self.dt == 0 && other.dt == 0 {
-            dtEqual = true
-        } else if self.dt == 0 || other.dt == 0 {
-            dtEqual = abs(self.dt - other.dt) < 1e-10
-        } else {
-            let relativeDifference = abs(self.dt - other.dt) / max(abs(self.dt), abs(other.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
-
-        guard dtEqual else {
-            throw WaveformError.incompatibleSamplingRates
-        }
-
-        self.values.append(contentsOf: other.values)
-    }
-
-    /// Create a new waveform by concatenating this one with another
-    public func concatenated(with other: WaveformPosition<T>) throws -> WaveformPosition<T> {
-        var result = self
-        try result.append(other)
-        return result
-    }
 }
 
 // MARK: - Equatable

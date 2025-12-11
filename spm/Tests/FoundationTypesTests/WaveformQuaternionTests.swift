@@ -420,62 +420,6 @@ struct WaveformQuaternionUtilityMethodsTests {
 
         #expect(waveform == nil)
     }
-
-    @Test("Append waveforms - success")
-    func appendWaveformsSuccess() throws {
-        let quaternions1 = [FloatQuaternion.identity, FloatQuaternion.zero]
-        let quaternions2 = [FloatQuaternion(x: 1, y: 0, z: 0, w: 0)]
-
-        let dt: TimeInterval = 0.1
-        var waveform1 = FloatWaveformQuaternion(values: quaternions1, dt: dt)
-        let waveform2 = FloatWaveformQuaternion(values: quaternions2, dt: dt)
-
-        try waveform1.append(waveform2)
-
-        #expect(waveform1.values.count == 3)
-        #expect(waveform1.values[0] == FloatQuaternion.identity)
-        #expect(waveform1.values[1] == FloatQuaternion.zero)
-        #expect(waveform1.values[2] == FloatQuaternion(x: 1, y: 0, z: 0, w: 0))
-    }
-
-    @Test("Append waveforms - incompatible sampling rates")
-    func appendWaveformsIncompatibleSamplingRates() {
-        let waveform1 = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: 0.1)
-        let waveform2 = DoubleWaveformQuaternion(values: [DoubleQuaternion.zero], dt: 0.2)
-
-        var mutableWaveform1 = waveform1
-
-        #expect(throws: WaveformError.self) {
-            try mutableWaveform1.append(waveform2)
-        }
-    }
-
-    @Test("Concatenated waveforms - success")
-    func concatenatedWaveformsSuccess() throws {
-        let waveform1 = FloatWaveformQuaternion(values: [FloatQuaternion.identity], dt: 0.05)
-        let waveform2 = FloatWaveformQuaternion(values: [FloatQuaternion.zero], dt: 0.05)
-
-        let concatenated = try waveform1.concatenated(with: waveform2)
-
-        #expect(concatenated.values.count == 2)
-        #expect(concatenated.values[0] == FloatQuaternion.identity)
-        #expect(concatenated.values[1] == FloatQuaternion.zero)
-        #expect(concatenated.dt == 0.05)
-
-        // Original waveforms should be unchanged
-        #expect(waveform1.values.count == 1)
-        #expect(waveform2.values.count == 1)
-    }
-
-    @Test("Concatenated waveforms - incompatible sampling rates")
-    func concatenatedWaveformsIncompatibleSamplingRates() {
-        let waveform1 = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: 0.1)
-        let waveform2 = DoubleWaveformQuaternion(values: [DoubleQuaternion.zero], dt: 0.15)
-
-        #expect(throws: WaveformError.self) {
-            _ = try waveform1.concatenated(with: waveform2)
-        }
-    }
 }
 
 // MARK: - Equatable Tests Suite

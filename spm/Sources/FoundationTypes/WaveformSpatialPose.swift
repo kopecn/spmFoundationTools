@@ -312,35 +312,6 @@ extension WaveformSpatialPose {
             t0: positionWaveform.t0
         )
     }
-
-    /// Append another pose waveform to this one
-    /// Both waveforms must have the same sampling rate
-    public mutating func append(_ other: WaveformSpatialPose<T>) throws {
-        // Compare dt with relative tolerance
-        let dtEqual: Bool
-        if self.dt == 0 && other.dt == 0 {
-            dtEqual = true
-        } else if self.dt == 0 || other.dt == 0 {
-            dtEqual = abs(self.dt - other.dt) < 1e-10
-        } else {
-            let relativeDifference = abs(self.dt - other.dt) / max(abs(self.dt), abs(other.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
-
-        guard dtEqual else {
-            throw WaveformError.incompatibleSamplingRates
-        }
-
-        self.positions.append(contentsOf: other.positions)
-        self.quaternions.append(contentsOf: other.quaternions)
-    }
-
-    /// Create a new waveform by concatenating this one with another
-    public func concatenated(with other: WaveformSpatialPose<T>) throws -> WaveformSpatialPose<T> {
-        var result = self
-        try result.append(other)
-        return result
-    }
 }
 
 // MARK: - Equatable

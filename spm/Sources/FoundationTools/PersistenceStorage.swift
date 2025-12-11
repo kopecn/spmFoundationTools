@@ -53,7 +53,7 @@ public actor PersistenceStorage {
     // MARK: - Configuration
 
     /// The filename used for Linux file-based storage.
-    private static let filename = ".sensible_ur_touch_config.json"
+    private static let filename = ".persistant_storage_config.json"
     /// The key used to track all stored keys in UserDefaults.
     private static let allKeysStorageKey = "_PersistenceStorage_AllKeys"
 
