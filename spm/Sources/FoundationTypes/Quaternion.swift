@@ -180,20 +180,21 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The identity quaternion (no rotation)
     @inlinable
     public static var identity: Quaternion<T> {
-        return Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 1))
+        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 1))
     }
 
     /// A zero quaternion (all components are zero)
     @inlinable
     public static var zero: Quaternion<T> {
-        return Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 0))
+        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 0))
     }
 }
 
 // MARK: - Equatable
 extension Quaternion: Equatable {
+    @inlinable
     public static func == (lhs: Quaternion<T>, rhs: Quaternion<T>) -> Bool {
-        return lhs.vector == rhs.vector
+        lhs.vector == rhs.vector
     }
 }
 
@@ -251,8 +252,7 @@ extension Quaternion where T == Float {
     /// Normalize the quaternion in place to make it a unit quaternion
     @inlinable
     public mutating func normalize() {
-        let magnitude = simd_length(vector)
-        if magnitude > T.ulpOfOne {
+        if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
         } else {
             self = .identity
@@ -262,31 +262,35 @@ extension Quaternion where T == Float {
     /// Get a normalized copy of the quaternion
     @inlinable
     public var normalized: Quaternion<T> {
-        let magnitude = simd_length(vector)
-        if magnitude > T.ulpOfOne {
+        if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             return Quaternion<T>(vector: simd_normalize(vector))
-        } else {
-            return .identity
         }
+        return .identity
     }
 
     /// The magnitude (length) of the quaternion
     @inlinable
     public var magnitude: T {
-        return simd_length(vector)
+        simd_length(vector)
     }
 
-    /// The squared magnitude of the quaternion
+    /// The squared magnitude of the quaternion (more efficient than magnitude)
     @inlinable
     public var magnitudeSquared: T {
-        return simd_length_squared(vector)
+        simd_length_squared(vector)
     }
 
     /// Check if this is a unit quaternion (normalized)
+    /// Uses squared magnitude to avoid expensive sqrt operation
     @inlinable
     public var isUnit: Bool {
-        let mag = magnitude
-        return abs(mag - 1) < T.ulpOfOne * 10
+        abs(simd_length_squared(vector) - 1) < 1e-5
+    }
+
+    /// Alias for isUnit (more common terminology)
+    @inlinable
+    public var isNormalized: Bool {
+        isUnit
     }
 }
 
@@ -294,8 +298,7 @@ extension Quaternion where T == Double {
     /// Normalize the quaternion in place to make it a unit quaternion
     @inlinable
     public mutating func normalize() {
-        let magnitude = simd_length(vector)
-        if magnitude > T.ulpOfOne {
+        if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
         } else {
             self = .identity
@@ -305,30 +308,34 @@ extension Quaternion where T == Double {
     /// Get a normalized copy of the quaternion
     @inlinable
     public var normalized: Quaternion<T> {
-        let magnitude = simd_length(vector)
-        if magnitude > T.ulpOfOne {
+        if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             return Quaternion<T>(vector: simd_normalize(vector))
-        } else {
-            return .identity
         }
+        return .identity
     }
 
     /// The magnitude (length) of the quaternion
     @inlinable
     public var magnitude: T {
-        return simd_length(vector)
+        simd_length(vector)
     }
 
-    /// The squared magnitude of the quaternion
+    /// The squared magnitude of the quaternion (more efficient than magnitude)
     @inlinable
     public var magnitudeSquared: T {
-        return simd_length_squared(vector)
+        simd_length_squared(vector)
     }
 
     /// Check if this is a unit quaternion (normalized)
+    /// Uses squared magnitude to avoid expensive sqrt operation
     @inlinable
     public var isUnit: Bool {
-        let mag = magnitude
-        return abs(mag - 1) < T.ulpOfOne * 10
+        abs(simd_length_squared(vector) - 1) < 1e-10
+    }
+
+    /// Alias for isUnit (more common terminology)
+    @inlinable
+    public var isNormalized: Bool {
+        isUnit
     }
 }
