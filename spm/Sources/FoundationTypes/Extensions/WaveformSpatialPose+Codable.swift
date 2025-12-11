@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension WaveformPose: Codable {
+extension WaveformSpatialPose: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case positions
@@ -38,23 +38,23 @@ extension WaveformPose: Codable {
 }
 
 // MARK: - File Loading/Saving
-extension WaveformPose {
+extension WaveformSpatialPose {
 
-    /// Load a WaveformPose from a JSON file at the specified URL
+    /// Load a WaveformSpatialPose from a JSON file at the specified URL
     /// - Parameter url: The URL of the JSON file to load
-    /// - Returns: A decoded WaveformPose instance
+    /// - Returns: A decoded WaveformSpatialPose instance
     /// - Throws: Decoding errors or file reading errors
-    public static func load(from url: URL) throws -> WaveformPose<T> {
+    public static func load(from url: URL) throws -> WaveformSpatialPose<T> {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
         // Use milliseconds since 1970 for better precision
         decoder.dateDecodingStrategy = .millisecondsSince1970
 
-        return try decoder.decode(WaveformPose<T>.self, from: data)
+        return try decoder.decode(WaveformSpatialPose<T>.self, from: data)
     }
 
-    /// Save the WaveformPose to a JSON file at the specified URL
+    /// Save the WaveformSpatialPose to a JSON file at the specified URL
     /// - Parameter url: The URL where the JSON file should be saved
     /// - Throws: Encoding errors or file writing errors
     public func save(to url: URL) throws {
@@ -68,17 +68,17 @@ extension WaveformPose {
         try data.write(to: url)
     }
 
-    /// Create a WaveformPose from JSON data
+    /// Create a WaveformSpatialPose from JSON data
     /// - Parameter data: The JSON data to decode
-    /// - Returns: A decoded WaveformPose instance
+    /// - Returns: A decoded WaveformSpatialPose instance
     /// - Throws: Decoding errors
-    public static func from(jsonData data: Data) throws -> WaveformPose<T> {
+    public static func from(jsonData data: Data) throws -> WaveformSpatialPose<T> {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
-        return try decoder.decode(WaveformPose<T>.self, from: data)
+        return try decoder.decode(WaveformSpatialPose<T>.self, from: data)
     }
 
-    /// Convert the WaveformPose to JSON data
+    /// Convert the WaveformSpatialPose to JSON data
     /// - Returns: JSON data representation of the waveform
     /// - Throws: Encoding errors
     public func toJSONData() throws -> Data {
@@ -88,7 +88,7 @@ extension WaveformPose {
         return try encoder.encode(self)
     }
 
-    /// Convert the WaveformPose to a JSON string
+    /// Convert the WaveformSpatialPose to a JSON string
     /// - Returns: JSON string representation of the waveform
     /// - Throws: Encoding errors
     public func toJSONString() throws -> String {
@@ -101,7 +101,7 @@ extension WaveformPose {
 }
 
 // MARK: - Pose-Specific File Operations
-extension WaveformPose {
+extension WaveformSpatialPose {
 
     /// Export to CSV format with pose components as columns
     /// - Parameter url: The URL where the CSV file should be saved
@@ -123,17 +123,17 @@ extension WaveformPose {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformPose where T: LosslessStringConvertible {
+extension WaveformSpatialPose where T: LosslessStringConvertible {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
-    /// - Returns: A WaveformPose created from the CSV data
+    /// - Returns: A WaveformSpatialPose created from the CSV data
     /// - Throws: File reading errors or parsing errors
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
-    ) throws -> WaveformPose<T> {
+    ) throws -> WaveformSpatialPose<T> {
         let csvContent = try String(contentsOf: url, encoding: .utf8)
         let lines = csvContent.components(separatedBy: .newlines).filter { !$0.isEmpty }
 
@@ -189,31 +189,31 @@ extension WaveformPose where T: LosslessStringConvertible {
         let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
         let t0 = Date(timeIntervalSince1970: firstTimestamp)
 
-        return WaveformPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
+        return WaveformSpatialPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
     }
 }
 
 // MARK: - Convenience Extensions for Common Types
-extension DoubleWaveformPose {
-    /// Load a DoubleWaveformPose from a JSON file
-    public static func loadFromFile(_ url: URL) throws -> DoubleWaveformPose {
+extension DoubleWaveformSpatialPose {
+    /// Load a DoubleWaveformSpatialPose from a JSON file
+    public static func loadFromFile(_ url: URL) throws -> DoubleWaveformSpatialPose {
         return try load(from: url)
     }
 
     /// Load from CSV file with Double precision
-    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> DoubleWaveformPose {
+    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> DoubleWaveformSpatialPose {
         return try importFromCSV(from: url, hasHeader: hasHeader)
     }
 }
 
-extension FloatWaveformPose {
-    /// Load a FloatWaveformPose from a JSON file
-    public static func loadFromFile(_ url: URL) throws -> FloatWaveformPose {
+extension FloatWaveformSpatialPose {
+    /// Load a FloatWaveformSpatialPose from a JSON file
+    public static func loadFromFile(_ url: URL) throws -> FloatWaveformSpatialPose {
         return try load(from: url)
     }
 
     /// Load from CSV file with Float precision
-    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> FloatWaveformPose {
+    public static func loadFromCSV(_ url: URL, hasHeader: Bool = true) throws -> FloatWaveformSpatialPose {
         return try importFromCSV(from: url, hasHeader: hasHeader)
     }
 }

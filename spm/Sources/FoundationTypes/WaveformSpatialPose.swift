@@ -2,12 +2,12 @@ import Foundation
 import simd
 
 // Convenience typealiases for common use cases
-public typealias DoubleWaveformPose = WaveformPose<Double>
-public typealias FloatWaveformPose = WaveformPose<Float>
+public typealias DoubleWaveformSpatialPose = WaveformSpatialPose<Double>
+public typealias FloatWaveformSpatialPose = WaveformSpatialPose<Float>
 
 /// A pose waveform data structure representing time-series spatial pose data (position + orientation).
 ///
-/// `WaveformPose` stores uniformly sampled pose values (position and quaternion) with their temporal characteristics,
+/// `WaveformSpatialPose` stores uniformly sampled pose values (position and quaternion) with their temporal characteristics,
 /// making it suitable for motion tracking, pose analysis, and spatial-orientation time-series data.
 ///
 /// Example usage:
@@ -24,12 +24,12 @@ public typealias FloatWaveformPose = WaveformPose<Float>
 ///     FloatQuaternion(x: 0.1, y: 0.0, z: 0.0, w: 0.995),
 ///     FloatQuaternion(x: 0.2, y: 0.0, z: 0.0, w: 0.98)
 /// ]
-/// var waveform = WaveformPose(positions: positions, quaternions: quaternions, dt: samplingInterval, t0: startTime)
+/// var waveform = WaveformSpatialPose(positions: positions, quaternions: quaternions, dt: samplingInterval, t0: startTime)
 ///
 /// // Double pose waveform
-/// var doubleWaveform = DoubleWaveformPose(positions: [DoublePosition.origin], quaternions: [DoubleQuaternion.identity])
+/// var doubleWaveform = DoubleWaveformSpatialPose(positions: [DoublePosition.origin], quaternions: [DoubleQuaternion.identity])
 /// ```
-public struct WaveformPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable {
+public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable {
     /// The sampled position values of the waveform
     public var positions: [Position<T>]
 
@@ -68,6 +68,34 @@ public struct WaveformPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Send
         self.init(positions: positions, quaternions: quaternions, dt: dt, t0: nil)
     }
 
+    /// Initialize from an array of SpatialPose instances
+    /// - Parameters:
+    ///   - poses: Array of SpatialPose instances to convert to waveform
+    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample
+    /// - Precondition: dt must be greater than 0
+    public init(poses: [SpatialPose<T>], dt: TimeInterval, t0: Date?) {
+        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
+        self.positions = poses.map { $0.position }
+        self.quaternions = poses.map { $0.quaternion }
+        self.dt = dt
+        self.t0 = t0
+    }
+
+    /// Initialize from an array of SpatialPose instances with default dt=1.0 and t0=nil
+    /// - Parameter poses: Array of SpatialPose instances to convert to waveform
+    public init(poses: [SpatialPose<T>]) {
+        self.init(poses: poses, dt: 1.0, t0: nil)
+    }
+
+    /// Initialize from an array of SpatialPose instances with dt, using default t0=nil
+    /// - Parameters:
+    ///   - poses: Array of SpatialPose instances to convert to waveform
+    ///   - dt: The time interval between samples in seconds (must be positive)
+    public init(poses: [SpatialPose<T>], dt: TimeInterval) {
+        self.init(poses: poses, dt: dt, t0: nil)
+    }
+
     // MARK: - Computed Properties (Available to all pose types)
 
     /// Get the total duration of the waveform
@@ -104,7 +132,7 @@ public struct WaveformPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Send
 }
 
 // MARK: - Computed Properties for Float Types
-extension WaveformPose where T == Float {
+extension WaveformSpatialPose where T == Float {
 
     /// Check if all positions in the waveform are unit positions (magnitude ≈ 1)
     public var areAllPositionsUnit: Bool {
@@ -127,10 +155,10 @@ extension WaveformPose where T == Float {
     }
 
     /// Get a normalized copy of the waveform
-    public var normalized: WaveformPose<T> {
+    public var normalized: WaveformSpatialPose<T> {
         let normalizedPositions = positions.map { $0.normalized }
         let normalizedQuaternions = quaternions.map { $0.normalized }
-        return WaveformPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+        return WaveformSpatialPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
     }
 
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
@@ -176,7 +204,7 @@ extension WaveformPose where T == Float {
 }
 
 // MARK: - Computed Properties for Double Types
-extension WaveformPose where T == Double {
+extension WaveformSpatialPose where T == Double {
 
     /// Check if all positions in the waveform are unit positions (magnitude ≈ 1)
     public var areAllPositionsUnit: Bool {
@@ -199,10 +227,10 @@ extension WaveformPose where T == Double {
     }
 
     /// Get a normalized copy of the waveform
-    public var normalized: WaveformPose<T> {
+    public var normalized: WaveformSpatialPose<T> {
         let normalizedPositions = positions.map { $0.normalized }
         let normalizedQuaternions = quaternions.map { $0.normalized }
-        return WaveformPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+        return WaveformSpatialPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
     }
 
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
@@ -248,13 +276,13 @@ extension WaveformPose where T == Double {
 }
 
 // MARK: - Utility Methods
-extension WaveformPose {
+extension WaveformSpatialPose {
 
     /// Create a pose waveform from separate position and quaternion waveforms
     public static func from(
         positionWaveform: WaveformPosition<T>,
         quaternionWaveform: WaveformQuaternion<T>
-    ) -> WaveformPose<T>? {
+    ) -> WaveformSpatialPose<T>? {
         // Check sample counts match
         guard positionWaveform.values.count == quaternionWaveform.values.count else {
             return nil
@@ -277,7 +305,7 @@ extension WaveformPose {
             return nil
         }
 
-        return WaveformPose<T>(
+        return WaveformSpatialPose<T>(
             positions: positionWaveform.values,
             quaternions: quaternionWaveform.values,
             dt: positionWaveform.dt,
@@ -287,7 +315,7 @@ extension WaveformPose {
 
     /// Append another pose waveform to this one
     /// Both waveforms must have the same sampling rate
-    public mutating func append(_ other: WaveformPose<T>) throws {
+    public mutating func append(_ other: WaveformSpatialPose<T>) throws {
         // Compare dt with relative tolerance
         let dtEqual: Bool
         if self.dt == 0 && other.dt == 0 {
@@ -308,7 +336,7 @@ extension WaveformPose {
     }
 
     /// Create a new waveform by concatenating this one with another
-    public func concatenated(with other: WaveformPose<T>) throws -> WaveformPose<T> {
+    public func concatenated(with other: WaveformSpatialPose<T>) throws -> WaveformSpatialPose<T> {
         var result = self
         try result.append(other)
         return result
@@ -316,8 +344,8 @@ extension WaveformPose {
 }
 
 // MARK: - Equatable
-extension WaveformPose: Equatable {
-    public static func == (lhs: WaveformPose<T>, rhs: WaveformPose<T>) -> Bool {
+extension WaveformSpatialPose: Equatable {
+    public static func == (lhs: WaveformSpatialPose<T>, rhs: WaveformSpatialPose<T>) -> Bool {
         // Compare positions and quaternions arrays
         guard lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions else { return false }
 
@@ -341,7 +369,7 @@ extension WaveformPose: Equatable {
 }
 
 // MARK: - Hashable
-extension WaveformPose: Hashable where T: Hashable {
+extension WaveformSpatialPose: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(positions)
         hasher.combine(quaternions)
@@ -351,13 +379,13 @@ extension WaveformPose: Hashable where T: Hashable {
 }
 
 // MARK: - CustomStringConvertible
-extension WaveformPose: CustomStringConvertible, CustomDebugStringConvertible {
+extension WaveformSpatialPose: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "WaveformPose(samples: \(sampleCount), dt: \(dt), duration: \(duration)s)"
+        return "WaveformSpatialPose(samples: \(sampleCount), dt: \(dt), duration: \(duration)s)"
     }
 
     public var debugDescription: String {
         return
-            "WaveformPose<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
+            "WaveformSpatialPose<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
     }
 }
