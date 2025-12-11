@@ -34,32 +34,32 @@ public typealias DoubleSpatialPose = SpatialPose<Double>
 public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>: Codable {
 
     /// The position vector (x, y, z)
-    public var _position: SIMD3<T>
+    public var _pos: SIMD3<T>
 
     /// The rotation quaternion (x, y, z, w)
-    public var _rotation: SIMD4<T>
+    public var _rot: SIMD4<T>
 
     // MARK: - Position Components
 
     /// The x component of position
     @inlinable
     public var x: T {
-        get { _position.x }
-        set { _position.x = newValue }
+        get { _pos.x }
+        set { _pos.x = newValue }
     }
 
     /// The y component of position
     @inlinable
     public var y: T {
-        get { _position.y }
-        set { _position.y = newValue }
+        get { _pos.y }
+        set { _pos.y = newValue }
     }
 
     /// The z component of position
     @inlinable
     public var z: T {
-        get { _position.z }
-        set { _position.z = newValue }
+        get { _pos.z }
+        set { _pos.z = newValue }
     }
 
     // MARK: - Rotation Components
@@ -67,29 +67,29 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     /// The x component of rotation quaternion (i coefficient)
     @inlinable
     public var qx: T {
-        get { _rotation.x }
-        set { _rotation.x = newValue }
+        get { _rot.x }
+        set { _rot.x = newValue }
     }
 
     /// The y component of rotation quaternion (j coefficient)
     @inlinable
     public var qy: T {
-        get { _rotation.y }
-        set { _rotation.y = newValue }
+        get { _rot.y }
+        set { _rot.y = newValue }
     }
 
     /// The z component of rotation quaternion (k coefficient)
     @inlinable
     public var qz: T {
-        get { _rotation.z }
-        set { _rotation.z = newValue }
+        get { _rot.z }
+        set { _rot.z = newValue }
     }
 
     /// The w component of rotation quaternion (real part)
     @inlinable
     public var qw: T {
-        get { _rotation.w }
-        set { _rotation.w = newValue }
+        get { _rot.w }
+        set { _rot.w = newValue }
     }
 
     // MARK: - Type Conversions
@@ -97,13 +97,13 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     /// Get the position as a Position type
     @inlinable
     public var position: Position<T> {
-        return Position<T>(vector: _position)
+        return Position<T>(vector: _pos)
     }
 
     /// Get the rotation as a Quaternion type
     @inlinable
     public var quaternion: Quaternion<T> {
-        return Quaternion<T>(vector: _rotation)
+        return Quaternion<T>(vector: _rot)
     }
 
     // MARK: - Initializers
@@ -113,8 +113,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - position: The position vector (x, y, z)
     ///   - rotation: The rotation quaternion (x, y, z, w)
     public init(position: SIMD3<T>, rotation: SIMD4<T>) {
-        self._position = position
-        self._rotation = rotation
+        self._pos = position
+        self._rot = rotation
     }
 
     /// Initialize a pose with individual components
@@ -127,8 +127,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - qz: The z component of rotation quaternion
     ///   - qw: The w component of rotation quaternion
     public init(x: T, y: T, z: T, qx: T, qy: T, qz: T, qw: T) {
-        self._position = SIMD3<T>(x, y, z)
-        self._rotation = SIMD4<T>(qx, qy, qz, qw)
+        self._pos = SIMD3<T>(x, y, z)
+        self._rot = SIMD4<T>(qx, qy, qz, qw)
     }
 
     /// Initialize a pose from Position and Quaternion types
@@ -136,8 +136,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - position: The Position instance
     ///   - rotation: The Quaternion instance
     public init(position: Position<T>, rotation: Quaternion<T>) {
-        self._position = position.vector
-        self._rotation = rotation.vector
+        self._pos = position.vector
+        self._rot = rotation.vector
     }
 
     /// Initialize a pose from a 4x4 homogeneous transformation matrix
@@ -146,7 +146,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///         and translation in the last column
     public init(homogeneousTransform: simd_float4x4) where T == Float {
         // Extract translation from last column
-        self._position = SIMD3<T>(
+        self._pos = SIMD3<T>(
             homogeneousTransform.columns.3.x,
             homogeneousTransform.columns.3.y,
             homogeneousTransform.columns.3.z
@@ -172,28 +172,28 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
             let qx = (m21 - m12) / s
             let qy = (m02 - m20) / s
             let qz = (m10 - m01) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else if m00 > m11 && m00 > m22 {
             let s = sqrt(1.0 + m00 - m11 - m22) * 2
             let qw = (m21 - m12) / s
             let qx = 0.25 * s
             let qy = (m01 + m10) / s
             let qz = (m02 + m20) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else if m11 > m22 {
             let s = sqrt(1.0 + m11 - m00 - m22) * 2
             let qw = (m02 - m20) / s
             let qx = (m01 + m10) / s
             let qy = 0.25 * s
             let qz = (m12 + m21) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else {
             let s = sqrt(1.0 + m22 - m00 - m11) * 2
             let qw = (m10 - m01) / s
             let qx = (m02 + m20) / s
             let qy = (m12 + m21) / s
             let qz = 0.25 * s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         }
     }
 
@@ -203,7 +203,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///         and translation in the last column
     public init(homogeneousTransform: simd_double4x4) where T == Double {
         // Extract translation from last column
-        self._position = SIMD3<T>(
+        self._pos = SIMD3<T>(
             homogeneousTransform.columns.3.x,
             homogeneousTransform.columns.3.y,
             homogeneousTransform.columns.3.z
@@ -229,28 +229,28 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
             let qx = (m21 - m12) / s
             let qy = (m02 - m20) / s
             let qz = (m10 - m01) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else if m00 > m11 && m00 > m22 {
             let s = sqrt(1.0 + m00 - m11 - m22) * 2
             let qw = (m21 - m12) / s
             let qx = 0.25 * s
             let qy = (m01 + m10) / s
             let qz = (m02 + m20) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else if m11 > m22 {
             let s = sqrt(1.0 + m11 - m00 - m22) * 2
             let qw = (m02 - m20) / s
             let qx = (m01 + m10) / s
             let qy = 0.25 * s
             let qz = (m12 + m21) / s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         } else {
             let s = sqrt(1.0 + m22 - m00 - m11) * 2
             let qw = (m10 - m01) / s
             let qx = (m02 + m20) / s
             let qy = (m12 + m21) / s
             let qz = 0.25 * s
-            self._rotation = SIMD4<T>(qx, qy, qz, qw)
+            self._rot = SIMD4<T>(qx, qy, qz, qw)
         }
     }
 
@@ -280,7 +280,7 @@ extension SpatialPose where T == Float {
     /// Convert the pose to a 4x4 homogeneous transformation matrix
     /// - Returns: A 4x4 transformation matrix in column-major order
     public var homogeneousTransform: simd_float4x4 {
-        let q = _rotation
+        let q = _rot
 
         // Normalize quaternion
         let length = sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
@@ -303,7 +303,7 @@ extension SpatialPose where T == Float {
         let col0 = SIMD4<Float>(1 - 2 * (yy + zz), 2 * (xy + wz), 2 * (xz - wy), 0)
         let col1 = SIMD4<Float>(2 * (xy - wz), 1 - 2 * (xx + zz), 2 * (yz + wx), 0)
         let col2 = SIMD4<Float>(2 * (xz + wy), 2 * (yz - wx), 1 - 2 * (xx + yy), 0)
-        let col3 = SIMD4<Float>(_position.x, _position.y, _position.z, 1)
+        let col3 = SIMD4<Float>(_pos.x, _pos.y, _pos.z, 1)
 
         return simd_float4x4(col0, col1, col2, col3)
     }
@@ -313,7 +313,7 @@ extension SpatialPose where T == Double {
     /// Convert the pose to a 4x4 homogeneous transformation matrix
     /// - Returns: A 4x4 transformation matrix in column-major order
     public var homogeneousTransform: simd_double4x4 {
-        let q = _rotation
+        let q = _rot
 
         // Normalize quaternion
         let length = sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
@@ -336,7 +336,7 @@ extension SpatialPose where T == Double {
         let col0 = SIMD4<Double>(1 - 2 * (yy + zz), 2 * (xy + wz), 2 * (xz - wy), 0)
         let col1 = SIMD4<Double>(2 * (xy - wz), 1 - 2 * (xx + zz), 2 * (yz + wx), 0)
         let col2 = SIMD4<Double>(2 * (xz + wy), 2 * (yz - wx), 1 - 2 * (xx + yy), 0)
-        let col3 = SIMD4<Double>(_position.x, _position.y, _position.z, 1)
+        let col3 = SIMD4<Double>(_pos.x, _pos.y, _pos.z, 1)
 
         return simd_double4x4(col0, col1, col2, col3)
     }
@@ -345,20 +345,20 @@ extension SpatialPose where T == Double {
 // MARK: - Equatable
 extension SpatialPose: Equatable {
     public static func == (lhs: SpatialPose<T>, rhs: SpatialPose<T>) -> Bool {
-        return lhs._position == rhs._position && lhs._rotation == rhs._rotation
+        return lhs._pos == rhs._pos && lhs._rot == rhs._rot
     }
 }
 
 // MARK: - Hashable
 extension SpatialPose: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(_position.x)
-        hasher.combine(_position.y)
-        hasher.combine(_position.z)
-        hasher.combine(_rotation.x)
-        hasher.combine(_rotation.y)
-        hasher.combine(_rotation.z)
-        hasher.combine(_rotation.w)
+        hasher.combine(_pos.x)
+        hasher.combine(_pos.y)
+        hasher.combine(_pos.z)
+        hasher.combine(_rot.x)
+        hasher.combine(_rot.y)
+        hasher.combine(_rot.z)
+        hasher.combine(_rot.w)
     }
 }
 

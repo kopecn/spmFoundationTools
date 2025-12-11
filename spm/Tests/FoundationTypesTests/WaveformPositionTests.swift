@@ -42,7 +42,7 @@ struct WaveformPositionBasicTests {
         let waveform = FloatWaveformPosition(values: positions, dt: 0.1, t0: Date())
 
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test_positions.csv")
+            .appendingPathComponent("test_poss.csv")
 
         try waveform.exportToCSV(to: tempURL)
         let imported = try FloatWaveformPosition.importFromCSV(from: tempURL)
@@ -286,7 +286,7 @@ struct WaveformPositionFileOperationsTests {
 
     @Test("File error handling - nonexistent file")
     func fileErrorHandlingNonexistent() {
-        let nonexistentURL = URL(fileURLWithPath: "/tmp/nonexistent_positions.json")
+        let nonexistentURL = URL(fileURLWithPath: "/tmp/nonexistent_poss.json")
 
         #expect(throws: Error.self) {
             try DoubleWaveformPosition.load(from: nonexistentURL)
