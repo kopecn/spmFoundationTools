@@ -91,11 +91,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         self.vector = SIMD3<T>(x, y, height)
     }
 
-    /// Initialize a position from spherical coordinates
+    /// Initialize a position from spherical coordinates (mathematical/geographic convention)
     /// - Parameters:
     ///   - radius: The radial distance from the origin
-    ///   - azimuth: The azimuthal angle in radians (longitude)
-    ///   - elevation: The elevation angle in radians (latitude)
+    ///   - azimuth: The azimuthal angle in radians (longitude), measured from the positive x-axis
+    ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
+    ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     public init(spherical radius: T, azimuth: T, elevation: T) where T == Double {
         let x = radius * cos(elevation) * cos(azimuth)
         let y = radius * cos(elevation) * sin(azimuth)
@@ -103,15 +104,46 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         self.vector = SIMD3<T>(x, y, z)
     }
 
-    /// Initialize a position from spherical coordinates
+    /// Initialize a position from spherical coordinates (mathematical/geographic convention)
     /// - Parameters:
     ///   - radius: The radial distance from the origin
-    ///   - azimuth: The azimuthal angle in radians (longitude)
-    ///   - elevation: The elevation angle in radians (latitude)
+    ///   - azimuth: The azimuthal angle in radians (longitude), measured from the positive x-axis
+    ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
+    ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     public init(spherical radius: T, azimuth: T, elevation: T) where T == Float {
         let x = radius * cos(elevation) * cos(azimuth)
         let y = radius * cos(elevation) * sin(azimuth)
         let z = radius * sin(elevation)
+        self.vector = SIMD3<T>(x, y, z)
+    }
+
+    /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
+    /// - Parameters:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: Azimuthal angle in radians (0 to 2π), measured from the positive x-axis.
+    ///              Represents the longitudinal position around the sphere.
+    ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from the positive
+    ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
+    ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
+    public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Double {
+        let x = radius * sin(polar) * cos(azimuth)
+        let y = radius * sin(polar) * sin(azimuth)
+        let z = radius * cos(polar)
+        self.vector = SIMD3<T>(x, y, z)
+    }
+
+    /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
+    /// - Parameters:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: Azimuthal angle in radians (0 to 2π), measured from the positive x-axis.
+    ///              Represents the longitudinal position around the sphere.
+    ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from the positive
+    ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
+    ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
+    public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Float {
+        let x = radius * sin(polar) * cos(azimuth)
+        let y = radius * sin(polar) * sin(azimuth)
+        let z = radius * cos(polar)
         self.vector = SIMD3<T>(x, y, z)
     }
 
@@ -263,12 +295,28 @@ extension Position where T == Float {
         return (radius: radius, angle: angle, height: z)
     }
 
-    /// Convert to spherical coordinates (radius, azimuth, elevation)
+    /// Convert to spherical coordinates (mathematical/geographic convention)
+    /// - Returns: A tuple with (radius, azimuth, elevation) where:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: The azimuthal angle in radians (longitude)
+    ///   - elevation: The elevation angle in radians (latitude), measured from the equator
     public var spherical: (radius: T, azimuth: T, elevation: T) {
         let radius = magnitude
         let azimuth = atan2(y, x)
         let elevation = asin(z / radius)
         return (radius: radius, azimuth: azimuth, elevation: elevation)
+    }
+
+    /// Convert to spherical coordinates (ISO 80000-2:2019 physics convention)
+    /// - Returns: A tuple with (radius, azimuth, polar) where:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: Azimuthal angle in radians (0 to 2π), measured from the positive x-axis
+    ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from +z axis
+    public var sphericalISO: (radius: T, azimuth: T, polar: T) {
+        let radius = magnitude
+        let azimuth = atan2(y, x)
+        let polar = acos(z / radius)
+        return (radius: radius, azimuth: azimuth, polar: polar)
     }
 }
 
@@ -323,11 +371,27 @@ extension Position where T == Double {
         return (radius: radius, angle: angle, height: z)
     }
 
-    /// Convert to spherical coordinates (radius, azimuth, elevation)
+    /// Convert to spherical coordinates (mathematical/geographic convention)
+    /// - Returns: A tuple with (radius, azimuth, elevation) where:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: The azimuthal angle in radians (longitude)
+    ///   - elevation: The elevation angle in radians (latitude), measured from the equator
     public var spherical: (radius: T, azimuth: T, elevation: T) {
         let radius = magnitude
         let azimuth = atan2(y, x)
         let elevation = asin(z / radius)
         return (radius: radius, azimuth: azimuth, elevation: elevation)
+    }
+
+    /// Convert to spherical coordinates (ISO 80000-2:2019 physics convention)
+    /// - Returns: A tuple with (radius, azimuth, polar) where:
+    ///   - radius: The radial distance from the origin
+    ///   - azimuth: Azimuthal angle in radians (0 to 2π), measured from the positive x-axis
+    ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from +z axis
+    public var sphericalISO: (radius: T, azimuth: T, polar: T) {
+        let radius = magnitude
+        let azimuth = atan2(y, x)
+        let polar = acos(z / radius)
+        return (radius: radius, azimuth: azimuth, polar: polar)
     }
 }

@@ -172,7 +172,8 @@ extension WaveformQuaternion {
         w: Waveform1D<T>
     ) -> WaveformQuaternion<T>? {
         // Check sample counts match
-        guard x.values.count == y.values.count && y.values.count == z.values.count && z.values.count == w.values.count else {
+        guard x.values.count == y.values.count && y.values.count == z.values.count && z.values.count == w.values.count
+        else {
             return nil
         }
 

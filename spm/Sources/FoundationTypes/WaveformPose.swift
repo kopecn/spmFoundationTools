@@ -267,7 +267,9 @@ extension WaveformPose {
         } else if positionWaveform.dt == 0 || quaternionWaveform.dt == 0 {
             dtEqual = abs(positionWaveform.dt - quaternionWaveform.dt) < 1e-10
         } else {
-            let relativeDifference = abs(positionWaveform.dt - quaternionWaveform.dt) / max(abs(positionWaveform.dt), abs(quaternionWaveform.dt))
+            let relativeDifference =
+                abs(positionWaveform.dt - quaternionWaveform.dt)
+                / max(abs(positionWaveform.dt), abs(quaternionWaveform.dt))
             dtEqual = relativeDifference < 1e-10
         }
 

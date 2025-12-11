@@ -5,7 +5,7 @@ import Foundation
 /// A type-safe key for storing and retrieving values from `PersistenceStorage`.
 /// - Parameters:
 ///   - T: The value type, which must conform to `Codable` and `Sendable`.
-/// Example Usage: 
+/// Example Usage:
 /// /// Extension point for defining persistence keys
 /// Other modules can extend this to add their own keys
 ///     ```
@@ -38,10 +38,10 @@ public struct PersistenceKey<T: Codable & Sendable>: Sendable {
 // MARK: - Persistence Storage Actor
 
 /// An actor that provides thread-safe, type-safe persistent storage with in-memory caching.
-/// 
+///
 /// - On macOS: Uses `UserDefaults` for persistence.
 /// - On Linux: Uses a JSON file in the user's home directory.
-/// 
+///
 /// Use the shared singleton instance `PersistenceStorage.shared` to access storage.
 public actor PersistenceStorage {
 
@@ -74,7 +74,8 @@ public actor PersistenceStorage {
         #if os(macOS)
         // Load the set of all stored keys from UserDefaults.
         if let keysData = UserDefaults.standard.data(forKey: Self.allKeysStorageKey),
-           let keys = try? JSONDecoder().decode(Set<String>.self, from: keysData) {
+            let keys = try? JSONDecoder().decode(Set<String>.self, from: keysData)
+        {
             self.allStoredKeys = keys
         }
         #else
@@ -201,7 +202,8 @@ public actor PersistenceStorage {
     /// Loads a Codable value from UserDefaults.
     private func loadFromUserDefaults<T: Codable>(forKey key: String) -> T? {
         guard let data = UserDefaults.standard.data(forKey: key),
-              let decoded = try? JSONDecoder().decode(T.self, from: data) else {
+            let decoded = try? JSONDecoder().decode(T.self, from: data)
+        else {
             return nil
         }
         return decoded
