@@ -10,6 +10,7 @@ import Foundation
 ///   - rhs: The right-hand side position.
 /// - Returns: `true` if all components are equal, otherwise `false`.
 extension Position: Equatable {
+    @inlinable
     public static func == (lhs: Position<T>, rhs: Position<T>) -> Bool {
         return lhs.vector == rhs.vector
     }
@@ -21,6 +22,7 @@ extension Position: Equatable {
 /// 
 /// Hashes the x, y, and z components of the position.
 extension Position: Hashable where T: Hashable {
+    @inlinable
     public func hash(into hasher: inout Hasher) {
         hasher.combine(vector.x)
         hasher.combine(vector.y)

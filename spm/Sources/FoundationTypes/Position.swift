@@ -53,6 +53,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     }
 
     /// Convert position to an array of components
+    @inlinable
     public var components: [T] {
         return [x, y, z]
     }
@@ -64,12 +65,14 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - x: The x component
     ///   - y: The y component
     ///   - z: The z component
+    @inlinable
     public init(x: T, y: T, z: T) {
         self.vector = SIMD3<T>(x, y, z)
     }
 
     /// Initialize a position from a SIMD3 vector
     /// - Parameter vector: The SIMD3 vector (x, y, z)
+    @inlinable
     public init(vector: SIMD3<T>) {
         self.vector = vector
     }
@@ -77,6 +80,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     /// Create a position from an array of components
     /// - Parameter components: Array containing [x, y, z] values
     /// - Returns: A new position, or nil if the array doesn't have exactly 3 elements
+    @inlinable
     public init?(components: [T]) {
         guard components.count == 3 else { return nil }
         self.init(x: components[0], y: components[1], z: components[2])
@@ -87,10 +91,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - radius: The radial distance from the z-axis
     ///   - angle: The angle in radians from the positive x-axis
     ///   - height: The height (z-coordinate)
+    @inlinable
     public init(cylindrical radius: T, angle: T, height: T) where T == Double {
-        let x = radius * simd.cos(angle)
-        let y = radius * simd.sin(angle)
-        self.vector = SIMD3<T>(x, y, height)
+        var sinAngle: T = 0
+        var cosAngle: T = 0
+        __sincos(angle, &sinAngle, &cosAngle)
+        self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
     }
 
     /// Initialize a position from cylindrical coordinates
@@ -98,10 +104,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - radius: The radial distance from the z-axis
     ///   - angle: The angle in radians from the positive x-axis
     ///   - height: The height (z-coordinate)
+    @inlinable
     public init(cylindrical radius: T, angle: T, height: T) where T == Float {
-        let x = radius * simd.cos(angle)
-        let y = radius * simd.sin(angle)
-        self.vector = SIMD3<T>(x, y, height)
+        var sinAngle: T = 0
+        var cosAngle: T = 0
+        __sincosf(angle, &sinAngle, &cosAngle)
+        self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
     }
 
     /// Initialize a position from spherical coordinates (mathematical/geographic convention)
@@ -110,11 +118,16 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - azimuth: The azimuthal angle in radians (longitude), measured from the positive x-axis
     ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
+    @inlinable
     public init(spherical radius: T, azimuth: T, elevation: T) where T == Double {
-        let x = radius * simd.cos(elevation) * simd.cos(azimuth)
-        let y = radius * simd.cos(elevation) * simd.sin(azimuth)
-        let z = radius * simd.sin(elevation)
-        self.vector = SIMD3<T>(x, y, z)
+        var sinAzimuth: T = 0
+        var cosAzimuth: T = 0
+        var sinElevation: T = 0
+        var cosElevation: T = 0
+        __sincos(azimuth, &sinAzimuth, &cosAzimuth)
+        __sincos(elevation, &sinElevation, &cosElevation)
+        let radiusXY = radius * cosElevation
+        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
     }
 
     /// Initialize a position from spherical coordinates (mathematical/geographic convention)
@@ -123,11 +136,16 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - azimuth: The azimuthal angle in radians (longitude), measured from the positive x-axis
     ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
+    @inlinable
     public init(spherical radius: T, azimuth: T, elevation: T) where T == Float {
-        let x = radius * simd.cos(elevation) * simd.cos(azimuth)
-        let y = radius * simd.cos(elevation) * simd.sin(azimuth)
-        let z = radius * simd.sin(elevation)
-        self.vector = SIMD3<T>(x, y, z)
+        var sinAzimuth: T = 0
+        var cosAzimuth: T = 0
+        var sinElevation: T = 0
+        var cosElevation: T = 0
+        __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
+        __sincosf(elevation, &sinElevation, &cosElevation)
+        let radiusXY = radius * cosElevation
+        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
     }
 
     /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
@@ -138,11 +156,16 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from the positive
     ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
+    @inlinable
     public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Double {
-        let x = radius * simd.sin(polar) * simd.cos(azimuth)
-        let y = radius * simd.sin(polar) * simd.sin(azimuth)
-        let z = radius * simd.cos(polar)
-        self.vector = SIMD3<T>(x, y, z)
+        var sinAzimuth: T = 0
+        var cosAzimuth: T = 0
+        var sinPolar: T = 0
+        var cosPolar: T = 0
+        __sincos(azimuth, &sinAzimuth, &cosAzimuth)
+        __sincos(polar, &sinPolar, &cosPolar)
+        let radiusXY = radius * sinPolar
+        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
     }
 
     /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
@@ -153,11 +176,16 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - polar: Polar angle (colatitude/zenith angle) in radians (0 to π), measured from the positive
     ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
+    @inlinable
     public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Float {
-        let x = radius * simd.sin(polar) * simd.cos(azimuth)
-        let y = radius * simd.sin(polar) * simd.sin(azimuth)
-        let z = radius * simd.cos(polar)
-        self.vector = SIMD3<T>(x, y, z)
+        var sinAzimuth: T = 0
+        var cosAzimuth: T = 0
+        var sinPolar: T = 0
+        var cosPolar: T = 0
+        __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
+        __sincosf(polar, &sinPolar, &cosPolar)
+        let radiusXY = radius * sinPolar
+        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
     }
 }
 
