@@ -28,34 +28,54 @@ public typealias DoubleQuaternion = Quaternion<Double>
 public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>: Codable {
 
     /// The SIMD vector representation of the quaternion (x, y, z, w)
-    public var vector: SIMD4<T>
+    public var vector: SIMD4<T> {
+        didSet {
+            _isNormalized = false
+        }
+    }
+
+    /// Cached flag indicating whether this quaternion is normalized
+    @usableFromInline
+    internal var _isNormalized: Bool
 
     /// The x component (i coefficient)
     @inlinable
     public var x: T {
         get { vector.x }
-        set { vector.x = newValue }
+        set {
+            vector.x = newValue
+            _isNormalized = false
+        }
     }
 
     /// The y component (j coefficient)
     @inlinable
     public var y: T {
         get { vector.y }
-        set { vector.y = newValue }
+        set {
+            vector.y = newValue
+            _isNormalized = false
+        }
     }
 
     /// The z component (k coefficient)
     @inlinable
     public var z: T {
         get { vector.z }
-        set { vector.z = newValue }
+        set {
+            vector.z = newValue
+            _isNormalized = false
+        }
     }
 
     /// The w component (real part)
     @inlinable
     public var w: T {
         get { vector.w }
-        set { vector.w = newValue }
+        set {
+            vector.w = newValue
+            _isNormalized = false
+        }
     }
 
     /// The imaginary part as a 3D vector (x, y, z)
@@ -66,6 +86,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
             vector.x = newValue.x
             vector.y = newValue.y
             vector.z = newValue.z
+            _isNormalized = false
         }
     }
 
@@ -73,7 +94,10 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     @inlinable
     public var real: T {
         get { vector.w }
-        set { vector.w = newValue }
+        set {
+            vector.w = newValue
+            _isNormalized = false
+        }
     }
 
     // MARK: - Initializers
@@ -84,22 +108,29 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - y: The y component (j coefficient)
     ///   - z: The z component (k coefficient)
     ///   - w: The w component (real part)
-    public init(x: T, y: T, z: T, w: T) {
+    ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    public init(x: T, y: T, z: T, w: T, isNormalized: Bool = false) {
         self.vector = SIMD4<T>(x, y, z, w)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a quaternion from a SIMD4 vector
-    /// - Parameter vector: The SIMD4 vector (x, y, z, w)
-    public init(vector: SIMD4<T>) {
+    /// - Parameters:
+    ///   - vector: The SIMD4 vector (x, y, z, w)
+    ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    public init(vector: SIMD4<T>, isNormalized: Bool = false) {
         self.vector = vector
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a quaternion from imaginary and real parts
     /// - Parameters:
     ///   - imaginary: The imaginary part as a 3D vector
     ///   - real: The real part
-    public init(imaginary: SIMD3<T>, real: T) {
+    ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    public init(imaginary: SIMD3<T>, real: T, isNormalized: Bool = false) {
         self.vector = SIMD4<T>(imaginary.x, imaginary.y, imaginary.z, real)
+        self._isNormalized = isNormalized
     }
     /// Initialize a quaternion from an axis and angle
     /// - Parameters:
@@ -118,6 +149,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
             normalizedAxis.z * sinHalfAngle,
             cosHalfAngle
         )
+        self._isNormalized = true
     }
 
     /// Initialize a quaternion from an axis and angle
@@ -137,6 +169,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
             normalizedAxis.z * sinHalfAngle,
             cosHalfAngle
         )
+        self._isNormalized = true
     }
 
     /// Initialize a quaternion from Euler angles (roll, pitch, yaw)
@@ -155,6 +188,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
             c.x * c.y * s.z - s.x * s.y * c.z,
             c.x * c.y * c.z + s.x * s.y * s.z
         )
+        self._isNormalized = true
     }
 
     /// Initialize a quaternion from Euler angles (roll, pitch, yaw)
@@ -173,6 +207,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
             c.x * c.y * s.z - s.x * s.y * c.z,
             c.x * c.y * c.z + s.x * s.y * s.z
         )
+        self._isNormalized = true
     }
 
     // MARK: - Static Properties
@@ -180,13 +215,13 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The identity quaternion (no rotation)
     @inlinable
     public static var identity: Quaternion<T> {
-        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 1))
+        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 1), isNormalized: true)
     }
 
     /// A zero quaternion (all components are zero)
     @inlinable
     public static var zero: Quaternion<T> {
-        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 0))
+        Quaternion<T>(vector: SIMD4<T>(0, 0, 0, 0), isNormalized: false)
     }
 }
 
@@ -254,6 +289,7 @@ extension Quaternion where T == Float {
     public mutating func normalize() {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
+            _isNormalized = true
         } else {
             self = .identity
         }
@@ -263,7 +299,7 @@ extension Quaternion where T == Float {
     @inlinable
     public var normalized: Quaternion<T> {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
-            return Quaternion<T>(vector: simd_normalize(vector))
+            return Quaternion<T>(vector: simd_normalize(vector), isNormalized: true)
         }
         return .identity
     }
@@ -286,12 +322,6 @@ extension Quaternion where T == Float {
     public var isUnit: Bool {
         abs(simd_length_squared(vector) - 1) < 1e-5
     }
-
-    /// Alias for isUnit (more common terminology)
-    @inlinable
-    public var isNormalized: Bool {
-        isUnit
-    }
 }
 
 extension Quaternion where T == Double {
@@ -300,6 +330,7 @@ extension Quaternion where T == Double {
     public mutating func normalize() {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
+            _isNormalized = true
         } else {
             self = .identity
         }
@@ -309,7 +340,7 @@ extension Quaternion where T == Double {
     @inlinable
     public var normalized: Quaternion<T> {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
-            return Quaternion<T>(vector: simd_normalize(vector))
+            return Quaternion<T>(vector: simd_normalize(vector), isNormalized: true)
         }
         return .identity
     }
@@ -332,10 +363,173 @@ extension Quaternion where T == Double {
     public var isUnit: Bool {
         abs(simd_length_squared(vector) - 1) < 1e-10
     }
+}
 
-    /// Alias for isUnit (more common terminology)
+// MARK: - Normalization Flag
+extension Quaternion {
+    /// Returns the cached normalization flag.
+    ///
+    /// This flag is automatically maintained by the Quaternion type:
+    /// - Set to `true` after calling `normalize()` or when created via normalizing initializers
+    ///   (axis-angle, Euler angles, identity)
+    /// - Set to `false` when any component is modified (x, y, z, w, imaginary, real, vector)
+    /// - Defaults to `false` for basic initializers unless explicitly specified
+    ///
+    /// For actual runtime verification of normalization, use `isUnit` instead,
+    /// which computes the magnitude and checks if it's approximately 1.
     @inlinable
     public var isNormalized: Bool {
-        isUnit
+        _isNormalized
+    }
+}
+
+// MARK: - Rotation Matrix Elements
+extension Quaternion {
+    /// A structure holding rotation matrix elements computed from a quaternion.
+    /// Efficiently shares computation of intermediate values when accessing multiple elements.
+    ///
+    /// The rotation matrix represented by a quaternion (x, y, z, w) is:
+    /// ```
+    /// | xx  xy  xz |
+    /// | yx  yy  yz |
+    /// | zx  zy  zz |
+    /// ```
+    ///
+    /// Example usage:
+    /// ```swift
+    /// let quat = FloatQuaternion(axis: simd_float3(0, 1, 0), angle: .pi / 4)
+    /// let elements = quat.matrixElements
+    /// print("xy: \(elements.xy), xz: \(elements.xz), yz: \(elements.yz)")
+    /// ```
+    public struct RotationMatrixElements {
+        // Upper triangle and diagonal
+        /// The xy element of the rotation matrix: 2(xy - wz)
+        public let xy: T
+
+        /// The xz element of the rotation matrix: 2(xz + wy)
+        public let xz: T
+
+        /// The yz element of the rotation matrix: 2(yz - wx)
+        public let yz: T
+
+        /// The xx diagonal element of the rotation matrix: 1 - 2(y² + z²)
+        public let xx: T
+
+        /// The yy diagonal element of the rotation matrix: 1 - 2(x² + z²)
+        public let yy: T
+
+        /// The zz diagonal element of the rotation matrix: 1 - 2(x² + y²)
+        public let zz: T
+
+        // Lower triangle (symmetric counterparts)
+        /// The yx element of the rotation matrix: 2(xy + wz)
+        public let yx: T
+
+        /// The zx element of the rotation matrix: 2(xz - wy)
+        public let zx: T
+
+        /// The zy element of the rotation matrix: 2(yz + wx)
+        public let zy: T
+
+        /// Initialize rotation matrix elements from a quaternion.
+        /// Efficiently computes all elements by sharing intermediate calculations.
+        @inlinable
+        init(quaternion: Quaternion<T>) {
+            let two: T = 2
+
+            // Compute squared components (shared across diagonal elements)
+            let x2 = quaternion.x * quaternion.x
+            let y2 = quaternion.y * quaternion.y
+            let z2 = quaternion.z * quaternion.z
+
+            // Compute products for off-diagonal elements
+            let xy_prod = quaternion.x * quaternion.y
+            let xz_prod = quaternion.x * quaternion.z
+            let yz_prod = quaternion.y * quaternion.z
+
+            let wx = quaternion.w * quaternion.x
+            let wy = quaternion.w * quaternion.y
+            let wz = quaternion.w * quaternion.z
+
+            // Upper triangle off-diagonal elements
+            self.xy = two * (xy_prod - wz)
+            self.xz = two * (xz_prod + wy)
+            self.yz = two * (yz_prod - wx)
+
+            // Lower triangle off-diagonal elements (symmetric counterparts)
+            self.yx = two * (xy_prod + wz)
+            self.zx = two * (xz_prod - wy)
+            self.zy = two * (yz_prod + wx)
+
+            // Diagonal elements
+            self.xx = 1 - two * (y2 + z2)
+            self.yy = 1 - two * (x2 + z2)
+            self.zz = 1 - two * (x2 + y2)
+        }
+    }
+
+    /// Access all rotation matrix elements efficiently with shared computation.
+    ///
+    /// When you need multiple matrix elements, use this property to compute them all at once,
+    /// which is more efficient than accessing individual element properties separately.
+    ///
+    /// Example:
+    /// ```swift
+    /// let elements = quat.matrixElements
+    /// let xy = elements.xy
+    /// let xz = elements.xz
+    /// let yz = elements.yz
+    /// ```
+    @inlinable
+    public var matrixElements: RotationMatrixElements {
+        RotationMatrixElements(quaternion: self)
+    }
+
+    /// The xy element of the rotation matrix: 2(xy - wz)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var xy: T {
+        2 * (x * y - w * z)
+    }
+
+    /// The xz element of the rotation matrix: 2(xz + wy)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var xz: T {
+        2 * (x * z + w * y)
+    }
+
+    /// The yz element of the rotation matrix: 2(yz - wx)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var yz: T {
+        2 * (y * z - w * x)
+    }
+
+    /// The xx diagonal element of the rotation matrix: 1 - 2(y² + z²)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var xx: T {
+        1 - 2 * (y * y + z * z)
+    }
+
+    /// The yy diagonal element of the rotation matrix: 1 - 2(x² + z²)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var yy: T {
+        1 - 2 * (x * x + z * z)
+    }
+
+    /// The zz diagonal element of the rotation matrix: 1 - 2(x² + y²)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var zz: T {
+        1 - 2 * (x * x + y * y)
     }
 }
