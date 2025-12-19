@@ -34,18 +34,10 @@ public typealias DoubleSpatialPose = SpatialPose<Double>
 public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>: Codable {
 
     /// The position vector (x, y, z)
-    public var _pos: SIMD3<T>
+    public var _pos: Position<T>
 
     /// The rotation quaternion (x, y, z, w)
-    public var _rot: SIMD4<T> {
-        didSet {
-            _isRotationNormalized = false
-        }
-    }
-
-    /// Cached flag indicating whether the rotation quaternion is normalized
-    @usableFromInline
-    internal var _isRotationNormalized: Bool
+    public var _rot: Quaternion<T>
 
     // MARK: - Position Components
 
@@ -76,40 +68,28 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     @inlinable
     public var qx: T {
         get { _rot.x }
-        set {
-            _rot.x = newValue
-            _isRotationNormalized = false
-        }
+        set { _rot.x = newValue }
     }
 
     /// The y component of rotation quaternion (j coefficient)
     @inlinable
     public var qy: T {
         get { _rot.y }
-        set {
-            _rot.y = newValue
-            _isRotationNormalized = false
-        }
+        set { _rot.y = newValue }
     }
 
     /// The z component of rotation quaternion (k coefficient)
     @inlinable
     public var qz: T {
         get { _rot.z }
-        set {
-            _rot.z = newValue
-            _isRotationNormalized = false
-        }
+        set { _rot.z = newValue }
     }
 
     /// The w component of rotation quaternion (real part)
     @inlinable
     public var qw: T {
         get { _rot.w }
-        set {
-            _rot.w = newValue
-            _isRotationNormalized = false
-        }
+        set { _rot.w = newValue }
     }
 
     // MARK: - Type Conversions
@@ -117,26 +97,26 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     /// Get the position as a Position type
     @inlinable
     public var position: Position<T> {
-        return Position<T>(vector: _pos)
+        return _pos
     }
 
     /// Get the rotation as a Quaternion type
     @inlinable
     public var quaternion: Quaternion<T> {
-        return Quaternion<T>(vector: _rot)
+        return _rot
     }
 
     /// Check if the rotation quaternion is normalized.
     ///
     /// Returns the cached normalization flag for the rotation.
-    /// This flag is automatically maintained:
+    /// This flag is automatically maintained by the Quaternion type:
     /// - Set to `true` after calling `normalize()`
-    /// - Set to `false` when any rotation component is modified (qx, qy, qz, qw, or _rot)
+    /// - Set to `false` when any rotation component is modified (qx, qy, qz, qw, or vector)
     ///
     /// - Returns: `true` if the rotation quaternion is normalized, `false` otherwise
     @inlinable
     public var isNormalized: Bool {
-        return _isRotationNormalized
+        return _rot.isNormalized
     }
 
     // MARK: - Initializers
@@ -147,9 +127,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - rotation: The rotation quaternion (x, y, z, w)
     ///   - isNormalized: Whether the rotation quaternion is known to be normalized (default: false)
     public init(position: SIMD3<T>, rotation: SIMD4<T>, isNormalized: Bool = false) {
-        self._pos = position
-        self._rot = rotation
-        self._isRotationNormalized = isNormalized
+        self._pos = Position<T>(vector: position)
+        self._rot = Quaternion<T>(vector: rotation, isNormalized: isNormalized)
     }
 
     /// Initialize a pose with individual components
@@ -163,9 +142,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - qw: The w component of rotation quaternion
     ///   - isNormalized: Whether the rotation quaternion is known to be normalized (default: false)
     public init(x: T, y: T, z: T, qx: T, qy: T, qz: T, qw: T, isNormalized: Bool = false) {
-        self._pos = SIMD3<T>(x, y, z)
-        self._rot = SIMD4<T>(qx, qy, qz, qw)
-        self._isRotationNormalized = isNormalized
+        self._pos = Position<T>(x: x, y: y, z: z)
+        self._rot = Quaternion<T>(x: qx, y: qy, z: qz, w: qw, isNormalized: isNormalized)
     }
 
     /// Initialize a pose from Position and Quaternion types
@@ -173,9 +151,8 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - position: The Position instance
     ///   - rotation: The Quaternion instance
     public init(position: Position<T>, rotation: Quaternion<T>) {
-        self._pos = position.vector
-        self._rot = rotation.vector
-        self._isRotationNormalized = rotation.isNormalized
+        self._pos = position
+        self._rot = rotation
     }
 
     /// Initialize a pose from a 4x4 homogeneous transformation matrix
@@ -184,11 +161,12 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///         and translation in the last column
     public init(homogeneousTransform: simd_float4x4) where T == Float {
         // Extract translation from last column
-        self._pos = SIMD3<T>(
+        let position = SIMD3<T>(
             homogeneousTransform.columns.3.x,
             homogeneousTransform.columns.3.y,
             homogeneousTransform.columns.3.z
         )
+        self._pos = Position<T>(vector: position)
 
         // Extract rotation matrix (upper-left 3x3)
         let m00 = homogeneousTransform.columns.0.x
@@ -204,37 +182,38 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
         // Convert rotation matrix to quaternion
         let trace = m00 + m11 + m22
 
+        let rotation: SIMD4<T>
         if trace > 0 {
             let s = sqrt(trace + 1.0) * 2
             let qw = 0.25 * s
             let qx = (m21 - m12) / s
             let qy = (m02 - m20) / s
             let qz = (m10 - m01) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else if m00 > m11 && m00 > m22 {
             let s = sqrt(1.0 + m00 - m11 - m22) * 2
             let qw = (m21 - m12) / s
             let qx = 0.25 * s
             let qy = (m01 + m10) / s
             let qz = (m02 + m20) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else if m11 > m22 {
             let s = sqrt(1.0 + m11 - m00 - m22) * 2
             let qw = (m02 - m20) / s
             let qx = (m01 + m10) / s
             let qy = 0.25 * s
             let qz = (m12 + m21) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else {
             let s = sqrt(1.0 + m22 - m00 - m11) * 2
             let qw = (m10 - m01) / s
             let qx = (m02 + m20) / s
             let qy = (m12 + m21) / s
             let qz = 0.25 * s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         }
         // Quaternions extracted from matrices are not guaranteed to be normalized
-        self._isRotationNormalized = false
+        self._rot = Quaternion<T>(vector: rotation, isNormalized: false)
     }
 
     /// Initialize a pose from a 4x4 homogeneous transformation matrix
@@ -243,11 +222,12 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///         and translation in the last column
     public init(homogeneousTransform: simd_double4x4) where T == Double {
         // Extract translation from last column
-        self._pos = SIMD3<T>(
+        let position = SIMD3<T>(
             homogeneousTransform.columns.3.x,
             homogeneousTransform.columns.3.y,
             homogeneousTransform.columns.3.z
         )
+        self._pos = Position<T>(vector: position)
 
         // Extract rotation matrix (upper-left 3x3)
         let m00 = homogeneousTransform.columns.0.x
@@ -263,37 +243,38 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
         // Convert rotation matrix to quaternion
         let trace = m00 + m11 + m22
 
+        let rotation: SIMD4<T>
         if trace > 0 {
             let s = sqrt(trace + 1.0) * 2
             let qw = 0.25 * s
             let qx = (m21 - m12) / s
             let qy = (m02 - m20) / s
             let qz = (m10 - m01) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else if m00 > m11 && m00 > m22 {
             let s = sqrt(1.0 + m00 - m11 - m22) * 2
             let qw = (m21 - m12) / s
             let qx = 0.25 * s
             let qy = (m01 + m10) / s
             let qz = (m02 + m20) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else if m11 > m22 {
             let s = sqrt(1.0 + m11 - m00 - m22) * 2
             let qw = (m02 - m20) / s
             let qx = (m01 + m10) / s
             let qy = 0.25 * s
             let qz = (m12 + m21) / s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         } else {
             let s = sqrt(1.0 + m22 - m00 - m11) * 2
             let qw = (m10 - m01) / s
             let qx = (m02 + m20) / s
             let qy = (m12 + m21) / s
             let qz = 0.25 * s
-            self._rot = SIMD4<T>(qx, qy, qz, qw)
+            rotation = SIMD4<T>(qx, qy, qz, qw)
         }
         // Quaternions extracted from matrices are not guaranteed to be normalized
-        self._isRotationNormalized = false
+        self._rot = Quaternion<T>(vector: rotation, isNormalized: false)
     }
 
     // MARK: - Static Properties
@@ -324,7 +305,7 @@ extension SpatialPose where T == Float {
     /// - Returns: A 4x4 transformation matrix in column-major order
     public var homogeneousTransform: simd_float4x4 {
         // Create and normalize quaternion
-        var quat = FloatQuaternion(vector: _rot)
+        var quat = _rot
         quat.normalize()
 
         // Get rotation matrix elements (single source of truth)
@@ -348,10 +329,7 @@ extension SpatialPose where T == Float {
     /// If the quaternion has near-zero magnitude, it will be set to the identity rotation.
     @inlinable
     public mutating func normalize() {
-        var quat = FloatQuaternion(vector: _rot)
-        quat.normalize()
-        _rot = quat.vector
-        _isRotationNormalized = true
+        _rot.normalize()
     }
 }
 
@@ -360,7 +338,7 @@ extension SpatialPose where T == Double {
     /// - Returns: A 4x4 transformation matrix in column-major order
     public var homogeneousTransform: simd_double4x4 {
         // Create and normalize quaternion
-        var quat = DoubleQuaternion(vector: _rot)
+        var quat = _rot
         quat.normalize()
 
         // Get rotation matrix elements (single source of truth)
@@ -384,10 +362,7 @@ extension SpatialPose where T == Double {
     /// If the quaternion has near-zero magnitude, it will be set to the identity rotation.
     @inlinable
     public mutating func normalize() {
-        var quat = DoubleQuaternion(vector: _rot)
-        quat.normalize()
-        _rot = quat.vector
-        _isRotationNormalized = true
+        _rot.normalize()
     }
 }
 
@@ -401,13 +376,8 @@ extension SpatialPose: Equatable {
 // MARK: - Hashable
 extension SpatialPose: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(_pos.x)
-        hasher.combine(_pos.y)
-        hasher.combine(_pos.z)
-        hasher.combine(_rot.x)
-        hasher.combine(_rot.y)
-        hasher.combine(_rot.z)
-        hasher.combine(_rot.w)
+        hasher.combine(_pos)
+        hasher.combine(_rot)
     }
 }
 

@@ -134,7 +134,7 @@ struct SpatialPoseTypeConversionTests {
         #expect(position.x == 1.5)
         #expect(position.y == 2.5)
         #expect(position.z == 3.5)
-        #expect(position.vector == pose._pos)
+        #expect(position == pose._pos)
     }
 
     @Test("Position type conversion - Double")
@@ -149,7 +149,7 @@ struct SpatialPoseTypeConversionTests {
         #expect(position.x == -10.0)
         #expect(position.y == 20.0)
         #expect(position.z == -30.0)
-        #expect(position.vector == pose._pos)
+        #expect(position == pose._pos)
     }
 
     @Test("Quaternion type conversion - Float")
@@ -165,7 +165,7 @@ struct SpatialPoseTypeConversionTests {
         #expect(quaternion.y == 0.5)
         #expect(quaternion.z == 0.5)
         #expect(quaternion.w == 0.5)
-        #expect(quaternion.vector == pose._rot)
+        #expect(quaternion == pose._rot)
     }
 
     @Test("Quaternion type conversion - Double")
@@ -181,7 +181,7 @@ struct SpatialPoseTypeConversionTests {
         #expect(abs(quaternion.y - 0.7071068) < 1e-6)
         #expect(abs(quaternion.z - 0.0) < 1e-10)
         #expect(abs(quaternion.w - 0.7071068) < 1e-6)
-        #expect(quaternion.vector == pose._rot)
+        #expect(quaternion == pose._rot)
     }
 
     @Test("Round-trip Position and Quaternion types")
@@ -209,8 +209,8 @@ struct SpatialPoseBasicTests {
 
         let pose = DoubleSpatialPose(position: position, rotation: rotation)
 
-        #expect(pose._pos == position.vector)
-        #expect(pose._rot == rotation.vector)
+        #expect(pose._pos == position)
+        #expect(pose._rot == rotation)
     }
 
     @Test("Identity pose properties")
