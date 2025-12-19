@@ -485,6 +485,31 @@ extension Quaternion {
         RotationMatrixElements(quaternion: self)
     }
 
+    /// The yx element of the rotation matrix: 2(xy + wz)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var yx: T {
+        2 * (x * y + w * z)
+    }
+
+    /// The zx element of the rotation matrix: 2(xz - wy)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var zx: T {
+        2 * (x * z - w * y)
+    }
+
+    /// The zy element of the rotation matrix: 2(yz + wx)
+    ///
+    /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
+    @inlinable
+    public var zy: T {
+        2 * (y * z + w * x)
+    }
+
+
     /// The xy element of the rotation matrix: 2(xy - wz)
     ///
     /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.
