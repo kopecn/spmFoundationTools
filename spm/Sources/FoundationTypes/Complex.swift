@@ -9,7 +9,7 @@ public typealias ComplexFloat = Complex<Float>
 
 /// A generic struct representing a complex number with real and imaginary components.
 /// - Note: `T` must conform to `BinaryFloatingPoint & SIMDScalar` (e.g., `Float`, `Double`).
-public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable> {
+public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
     /// Internal SIMD2 storage for real and imaginary components.
     @usableFromInline
     internal var storage: SIMD2<T>
@@ -42,35 +42,23 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable> {
 }
 
 
-// MARK: - CustomStringConvertible, CustomDebugStringConvertible
-extension Complex: CustomStringConvertible, CustomDebugStringConvertible {
-    public var description: String {
-        if imaginary >= 0 {
-            return "\(real) + \(imaginary)i"
-        } else {
-            return "\(real) - \(-imaginary)i"
-        }
+// Unsafe but explicit Sendable conformance
+extension Complex: @unchecked Sendable {}
+
+
+// MARK: - Collection Operations
+extension Complex {
+
+    /// Create a complex type from an array of components
+    /// - Parameter components: Array containing [x, y] values
+    /// - Returns: A new complex number, or nil if the array doesn't have exactly 2 elements
+    public init?(components: [T]) {
+        guard components.count == 2 else { return nil }
+        self.init(real: components[0], imaginary: components[1])
     }
 
-    // MARK: - CustomDebugStringConvertible
-    public var debugDescription: String {
-        return "Complex(real: \(real), imaginary: \(imaginary))"
-    }
-}
-
-// MARK: - Hashable
-extension Complex: Hashable where T: Hashable{
-    @inlinable
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(real)
-        hasher.combine(imaginary)
-    }
-}
-
-// MARK: - Equatable
-extension Complex: Equatable {
-    @inlinable
-    public static func == (lhs: Complex<T>, rhs: Complex<T>) -> Bool {
-        return lhs.storage == rhs.storage
+    /// Convert position to an array of components
+    public var components: [T] {
+        return [real, imaginary]
     }
 }
