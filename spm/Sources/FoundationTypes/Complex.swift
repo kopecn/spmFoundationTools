@@ -74,3 +74,55 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
 
 /// Explicitly marks `Complex` as `Sendable` for concurrency safety.
 extension Complex: @unchecked Sendable {}
+
+// MARK: - Phasor/Polar Initializer (Double)
+
+extension Complex where T == Double {
+    /// Initializes a complex number from polar/phasor form.
+    /// - Parameters:
+    ///   - magnitude: The magnitude (radius) of the complex number.
+    ///   - phase: The phase angle in radians.
+    ///
+    /// Creates a complex number where:
+    /// - `real = magnitude * cos(phase)`
+    /// - `imaginary = magnitude * sin(phase)`
+    ///
+    /// Example:
+    /// ```swift
+    /// let z = Complex<Double>(magnitude: 1.0, phase: .pi / 4)
+    /// // Creates complex number at 45 degrees: ≈ 0.707 + 0.707i
+    /// ```
+    @inlinable
+    public init(magnitude: T, phase: T) {
+        var sinValue: T = 0
+        var cosValue: T = 0
+        __sincos(phase, &sinValue, &cosValue)
+        self.storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
+    }
+}
+
+// MARK: - Phasor/Polar Initializer (Float)
+
+extension Complex where T == Float {
+    /// Initializes a complex number from polar/phasor form.
+    /// - Parameters:
+    ///   - magnitude: The magnitude (radius) of the complex number.
+    ///   - phase: The phase angle in radians.
+    ///
+    /// Creates a complex number where:
+    /// - `real = magnitude * cos(phase)`
+    /// - `imaginary = magnitude * sin(phase)`
+    ///
+    /// Example:
+    /// ```swift
+    /// let z = Complex<Float>(magnitude: 1.0, phase: .pi / 4)
+    /// // Creates complex number at 45 degrees: ≈ 0.707 + 0.707i
+    /// ```
+    @inlinable
+    public init(magnitude: T, phase: T) {
+        var sinValue: T = 0
+        var cosValue: T = 0
+        __sincosf(phase, &sinValue, &cosValue)
+        self.storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
+    }
+}
