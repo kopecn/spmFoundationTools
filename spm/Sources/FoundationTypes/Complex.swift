@@ -148,3 +148,20 @@ extension Complex where T == Float {
         self._isNormalized = abs(magnitude - 1) < 1e-5
     }
 }
+
+extension Complex {
+
+    /// Returns the cached normalization flag.
+    ///
+    /// This flag is automatically maintained by the Complex type:
+    /// - Set to `true` after callsing `normalize()` or when created via normalizing initializers
+    /// - Set to `false` when any component is modified (real, imaginary, storage)
+    /// - Defaults to `false` for basic initializers unless explicitly specified
+    ///
+    /// For actual runtime verification of normalization, use `isUnit` instead,
+    /// which computes the magnitude and checks if it's approximately 1.
+    @inlinable
+    public var isNormalized: Bool {
+        _isNormalized
+    }
+}

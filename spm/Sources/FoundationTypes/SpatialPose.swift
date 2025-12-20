@@ -366,31 +366,6 @@ extension SpatialPose where T == Double {
     }
 }
 
-// MARK: - Equatable
-extension SpatialPose: Equatable {
-    public static func == (lhs: SpatialPose<T>, rhs: SpatialPose<T>) -> Bool {
-        return lhs._pos == rhs._pos && lhs._rot == rhs._rot
-    }
-}
-
-// MARK: - Hashable
-extension SpatialPose: Hashable where T: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(_pos)
-        hasher.combine(_rot)
-    }
-}
-
-// MARK: - CustomStringConvertible, CustomDebugStringConvertible
-extension SpatialPose: CustomStringConvertible, CustomDebugStringConvertible {
-    public var description: String {
-        return "SpatialPose(position: (\(x), \(y), \(z)), rotation: (\(qx), \(qy), \(qz), \(qw)))"
-    }
-
-    public var debugDescription: String {
-        return "SpatialPose<\(T.self)>(position: (\(x), \(y), \(z)), rotation: (\(qx), \(qy), \(qz), \(qw)))"
-    }
-}
 
 // MARK: - Codable Implementation
 extension SpatialPose {

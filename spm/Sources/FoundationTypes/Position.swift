@@ -246,3 +246,20 @@ extension Position where T: BinaryFloatingPoint {
 
 // Unsafe but explicit Sendable conformance
 extension Position: @unchecked Sendable {}
+
+extension Position {
+
+    /// Returns the cached normalization flag.
+    ///
+    /// This flag is automatically maintained by the Position type:
+    /// - Set to `true` after callsing `normalize()` or when created via normalizing initializers
+    /// - Set to `false` when any component is modified (real, imaginary, storage)
+    /// - Defaults to `false` for basic initializers unless explicitly specified
+    ///
+    /// For actual runtime verification of normalization, use `isUnit` instead,
+    /// which computes the magnitude and checks if it's approximately 1.
+    @inlinable
+    public var isNormalized: Bool {
+        _isNormalized
+    }
+}

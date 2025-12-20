@@ -5,20 +5,6 @@ import simd
 
 extension Complex: NormalizableFloat where T == Float {
 
-    /// Returns the cached normalization flag.
-    ///
-    /// This flag is automatically maintained by the Complex type:
-    /// - Set to `true` after callsing `normalize()` or when created via normalizing initializers
-    /// - Set to `false` when any component is modified (real, imaginary, storage)
-    /// - Defaults to `false` for basic initializers unless explicitly specified
-    ///
-    /// For actual runtime verification of normalization, use `isUnit` instead,
-    /// which computes the magnitude and checks if it's approximately 1.
-    @inlinable
-    public var isNormalized: Bool {
-        _isNormalized
-    }
-
     /// Normalize the complex number in place to make it a unit complex number (magnitude = 1)
     @inlinable
     public mutating func normalize() {
@@ -61,20 +47,6 @@ extension Complex: NormalizableFloat where T == Float {
 }
 
 extension Complex: NormalizableDouble where T == Double {
-
-    /// Returns the cached normalization flag.
-    ///
-    /// This flag is automatically maintained by the Complex type:
-    /// - Set to `true` after callsing `normalize()` or when created via normalizing initializers
-    /// - Set to `false` when any component is modified (real, imaginary, storage)
-    /// - Defaults to `false` for basic initializers unless explicitly specified
-    ///
-    /// For actual runtime verification of normalization, use `isUnit` instead,
-    /// which computes the magnitude and checks if it's approximately 1.
-    @inlinable
-    public var isNormalized: Bool {
-        _isNormalized
-    }
 
     /// Normalize the complex number in place to make it a unit complex number (magnitude = 1)
     @inlinable

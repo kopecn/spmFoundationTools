@@ -3,27 +3,26 @@ import simd
 
 // MARK: - Normalization Conformance
 
-extension Position: NormalizableFloat where T == Float {
+extension Quaternion: NormalizableFloat where T == Float {
 
-    /// Normalize the complex number in place to make it a unit complex number (magnitude = 1)
+    /// Normalize the quaternion in place to make it a unit quaternion (magnitude = 1)
     @inlinable
     public mutating func normalize() {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
             _isNormalized = true
         } else {
-            self.vector = SIMD3(0, 0, 0)
-            _isNormalized = true
+            self = .identity
         }
     }
 
     /// Get a normalized copy of the complex number
     @inlinable
-    public var normalized: Position<T> {
+    public var normalized: Quaternion<T> {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
-            return Position<T>(vector: simd_normalize(vector), isNormalized: true)
+            return Quaternion<T>(vector: simd_normalize(vector), isNormalized: true)
         }
-        return Position<T>(x: 0, y: 0, z: 0, isNormalized: true)
+        return .identity
     }
 
     /// The magnitude (absolute value) of the complex number
@@ -42,31 +41,30 @@ extension Position: NormalizableFloat where T == Float {
     /// Uses squared magnitude to avoid expensive sqrt operation
     @inlinable
     public var isUnit: Bool {
-        abs(simd_length_squared(vector) - 1) < 1e-10
+        abs(simd_length_squared(vector) - 1) < 1e-5
     }
 }
 
-extension Position: NormalizableDouble where T == Double {
+extension Quaternion: NormalizableDouble where T == Double {
 
-    /// Normalize the complex number in place to make it a unit complex number (magnitude = 1)
+    /// Normalize the quaternion in place to make it a unit quaternion (magnitude = 1)
     @inlinable
     public mutating func normalize() {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
             vector = simd_normalize(vector)
             _isNormalized = true
         } else {
-            self.vector = SIMD3(0, 0, 0)
-            _isNormalized = true
+            self = .identity
         }
     }
 
     /// Get a normalized copy of the complex number
     @inlinable
-    public var normalized: Position<T> {
+    public var normalized: Quaternion<T> {
         if simd_length_squared(vector) > T.ulpOfOne * T.ulpOfOne {
-            return Position<T>(vector: simd_normalize(vector), isNormalized: true)
+            return Quaternion<T>(vector: simd_normalize(vector), isNormalized: true)
         }
-        return Position<T>(x: 0, y: 0, z: 0, isNormalized: true)
+        return .identity
     }
 
     /// The magnitude (absolute value) of the complex number
