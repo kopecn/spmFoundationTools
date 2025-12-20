@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension WaveformSpatialPose: Codable {
+extension WaveformSpatialPose: Codable where T: BinaryFloatingPoint {
 
     private enum CodingKeys: String, CodingKey {
         case positions
@@ -15,7 +15,7 @@ extension WaveformSpatialPose: Codable {
 
         positions = try container.decode([Position<T>].self, forKey: .positions)
         quaternions = try container.decode([Quaternion<T>].self, forKey: .quaternions)
-        dt = try container.decode(TimeInterval.self, forKey: .dt)
+        dt = try container.decode(T.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
 
         // Validate dt is positive
@@ -101,7 +101,7 @@ extension WaveformSpatialPose {
 }
 
 // MARK: - Pose-Specific File Operations
-extension WaveformSpatialPose {
+extension WaveformSpatialPose where T: BinaryFloatingPoint {
 
     /// Export to CSV format with pose components as columns
     /// - Parameter url: The URL where the CSV file should be saved
@@ -112,7 +112,7 @@ extension WaveformSpatialPose {
         for index in 0..<sampleCount {
             let position = positions[index]
             let quaternion = quaternions[index]
-            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * dt
+            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * Double(dt)
             csvContent +=
                 "\(time),\(position.x),\(position.y),\(position.z),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
         }
@@ -123,7 +123,7 @@ extension WaveformSpatialPose {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformSpatialPose where T: LosslessStringConvertible {
+extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatingPoint {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load
@@ -186,7 +186,7 @@ extension WaveformSpatialPose where T: LosslessStringConvertible {
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
+        let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
         let t0 = Date(timeIntervalSince1970: firstTimestamp)
 
         return WaveformSpatialPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)

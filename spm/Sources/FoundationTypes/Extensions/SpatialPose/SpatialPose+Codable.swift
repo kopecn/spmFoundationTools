@@ -3,10 +3,10 @@ import Foundation
 // MARK: - Codable Implementation
 
 /// Conformance to `Codable` for the `SpatialPose` type.
-/// 
+///
 /// This extension enables encoding and decoding of spatial poses to and from formats such as JSON.
 /// The position (`x`, `y`, `z`) and rotation quaternion (`qx`, `qy`, `qz`, `qw`) components are encoded as separate fields.
-/// 
+///
 /// Example encoding output:
 /// ```json
 /// {
@@ -26,7 +26,7 @@ import Foundation
 /// let data = try JSONEncoder().encode(pose)
 /// let decoded = try JSONDecoder().decode(SpatialPose<Double>.self, from: data)
 /// ```
-extension SpatialPose {
+extension SpatialPose: Codable where T: Codable {
     private enum CodingKeys: String, CodingKey {
         case x, y, z
         case qx, qy, qz, qw

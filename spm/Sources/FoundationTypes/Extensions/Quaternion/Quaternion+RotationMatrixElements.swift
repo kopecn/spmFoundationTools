@@ -127,7 +127,6 @@ extension Quaternion {
         2 * (y * z + w * x)
     }
 
-
     /// The xy element of the rotation matrix: 2(xy - wz)
     ///
     /// Note: If you need multiple matrix elements, use `matrixElements` instead for better performance.

@@ -15,7 +15,7 @@ struct WaveformQuaternionInitializationTests {
             FloatQuaternion(x: 0.0, y: 1.0, z: 0.0, w: 0.0),
             FloatQuaternion(x: 0.0, y: 0.0, z: 1.0, w: 0.0),
         ]
-        let dt: TimeInterval = 0.01
+        let dt: Float = 0.01
         let t0 = Date()
 
         let waveform = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
@@ -35,7 +35,7 @@ struct WaveformQuaternionInitializationTests {
             DoubleQuaternion(x: 0.707, y: 0.0, z: 0.0, w: 0.707),
             DoubleQuaternion(x: 0.0, y: 0.707, z: 0.0, w: 0.707),
         ]
-        let dt: TimeInterval = 0.001
+        let dt: Double = 0.001
         let t0 = Date()
 
         let waveform = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
@@ -61,7 +61,7 @@ struct WaveformQuaternionInitializationTests {
     @Test("Values and dt initialization")
     func valuesAndDtInitialization() {
         let quaternions = [DoubleQuaternion.identity]
-        let dt: TimeInterval = 0.5
+        let dt: Double = 0.5
         let waveform = DoubleWaveformQuaternion(values: quaternions, dt: dt)
 
         #expect(waveform.values == quaternions)
@@ -97,12 +97,12 @@ struct WaveformQuaternionComputedPropertiesTests {
     @Test("Duration calculation - multiple samples")
     func durationCalculationMultipleSamples() {
         let quaternions = Array(repeating: FloatQuaternion.identity, count: 10)
-        let dt: TimeInterval = 0.1
+        let dt: Float = 0.1
         let waveform = FloatWaveformQuaternion(values: quaternions, dt: dt)
 
-        let expectedDuration = TimeInterval(quaternions.count - 1) * dt
+        let expectedDuration = Float(quaternions.count - 1) * dt
         #expect(waveform.duration == expectedDuration)
-        #expect(waveform.duration == 0.9)
+        #expect(abs(waveform.duration - 0.9) < 1e-5)
     }
 
     @Test("Duration calculation - single sample")
@@ -121,7 +121,7 @@ struct WaveformQuaternionComputedPropertiesTests {
 
     @Test("Sampling frequency calculation")
     func samplingFrequencyCalculation() {
-        let dt: TimeInterval = 0.01  // 10ms
+        let dt: Double = 0.01  // 10ms
         let waveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: dt)
 
         #expect(abs(waveform.samplingFrequency - 100.0) < 1e-10)  // Use epsilon for safety
@@ -129,20 +129,20 @@ struct WaveformQuaternionComputedPropertiesTests {
 
     @Test("Nyquist frequency calculation")
     func nyquistFrequencyCalculation() {
-        let dt: TimeInterval = 0.002  // 2ms, 500 Hz sampling
+        let dt: Float = 0.002  // 2ms, 500 Hz sampling
         let waveform = FloatWaveformQuaternion(values: [FloatQuaternion.identity], dt: dt)
 
-        #expect(abs(waveform.nyquistFrequency - 250.0) < 1e-6)  // Use epsilon for safety
+        #expect(abs(waveform.nyquistFrequency - 250.0) < 2e-5)  // Use epsilon for safety
     }
 
     @Test("End time calculation with t0")
     func endTimeCalculationWithT0() {
         let t0 = Date()
         let quaternions = Array(repeating: DoubleQuaternion.identity, count: 5)
-        let dt: TimeInterval = 0.5
+        let dt: Double = 0.5
         let waveform = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
 
-        let expectedEndTime = t0.addingTimeInterval(waveform.duration)
+        let expectedEndTime = t0.addingTimeInterval(TimeInterval(waveform.duration))
         #expect(waveform.endTime == expectedEndTime)
     }
 
@@ -292,7 +292,7 @@ struct WaveformQuaternionComponentWaveformsTests {
             FloatQuaternion(x: 5.0, y: 6.0, z: 7.0, w: 8.0),
             FloatQuaternion(x: 9.0, y: 10.0, z: 11.0, w: 12.0),
         ]
-        let dt: TimeInterval = 0.1
+        let dt: Float = 0.1
         let t0 = Date()
         let waveform = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
 
@@ -377,13 +377,13 @@ struct WaveformQuaternionUtilityMethodsTests {
         let zValues: [Float] = [7.0, 8.0, 9.0]
         let wValues: [Float] = [10.0, 11.0, 12.0]
 
-        let dt: TimeInterval = 0.1
+        let dt: Float = 0.1
         let t0 = Date()
 
-        let xWaveform = Waveform1D<Float>(values: xValues, dt: dt, t0: t0)
-        let yWaveform = Waveform1D<Float>(values: yValues, dt: dt, t0: t0)
-        let zWaveform = Waveform1D<Float>(values: zValues, dt: dt, t0: t0)
-        let wWaveform = Waveform1D<Float>(values: wValues, dt: dt, t0: t0)
+        let xWaveform = Waveform1D<Float, Float>(values: xValues, dt: dt, t0: t0)
+        let yWaveform = Waveform1D<Float, Float>(values: yValues, dt: dt, t0: t0)
+        let zWaveform = Waveform1D<Float, Float>(values: zValues, dt: dt, t0: t0)
+        let wWaveform = Waveform1D<Float, Float>(values: wValues, dt: dt, t0: t0)
 
         let waveform = FloatWaveformQuaternion.from(x: xWaveform, y: yWaveform, z: zWaveform, w: wWaveform)
 
@@ -399,10 +399,10 @@ struct WaveformQuaternionUtilityMethodsTests {
 
     @Test("Create from component waveforms - mismatched counts")
     func createFromComponentWaveformsMismatchedCounts() {
-        let xWaveform = Waveform1D<Double>(values: [1.0, 2.0], dt: 0.1)
-        let yWaveform = Waveform1D<Double>(values: [3.0, 4.0, 5.0], dt: 0.1)  // Different count
-        let zWaveform = Waveform1D<Double>(values: [6.0, 7.0], dt: 0.1)
-        let wWaveform = Waveform1D<Double>(values: [8.0, 9.0], dt: 0.1)
+        let xWaveform = Waveform1D<Double, Double>(values: [1.0, 2.0], dt: 0.1)
+        let yWaveform = Waveform1D<Double, Double>(values: [3.0, 4.0, 5.0], dt: 0.1)  // Different count
+        let zWaveform = Waveform1D<Double, Double>(values: [6.0, 7.0], dt: 0.1)
+        let wWaveform = Waveform1D<Double, Double>(values: [8.0, 9.0], dt: 0.1)
 
         let waveform = DoubleWaveformQuaternion.from(x: xWaveform, y: yWaveform, z: zWaveform, w: wWaveform)
 
@@ -411,10 +411,10 @@ struct WaveformQuaternionUtilityMethodsTests {
 
     @Test("Create from component waveforms - mismatched dt")
     func createFromComponentWaveformsMismatchedDt() {
-        let xWaveform = Waveform1D<Float>(values: [1.0, 2.0], dt: 0.1)
-        let yWaveform = Waveform1D<Float>(values: [3.0, 4.0], dt: 0.2)  // Different dt
-        let zWaveform = Waveform1D<Float>(values: [5.0, 6.0], dt: 0.1)
-        let wWaveform = Waveform1D<Float>(values: [7.0, 8.0], dt: 0.1)
+        let xWaveform = Waveform1D<Float, Float>(values: [1.0, 2.0], dt: 0.1)
+        let yWaveform = Waveform1D<Float, Float>(values: [3.0, 4.0], dt: 0.2)  // Different dt
+        let zWaveform = Waveform1D<Float, Float>(values: [5.0, 6.0], dt: 0.1)
+        let wWaveform = Waveform1D<Float, Float>(values: [7.0, 8.0], dt: 0.1)
 
         let waveform = FloatWaveformQuaternion.from(x: xWaveform, y: yWaveform, z: zWaveform, w: wWaveform)
 
@@ -429,7 +429,7 @@ struct WaveformQuaternionEquatableTests {
     @Test("Equality - identical waveforms")
     func equalityIdenticalWaveforms() {
         let quaternions = [FloatQuaternion.identity, FloatQuaternion.zero]
-        let dt: TimeInterval = 0.1
+        let dt: Float = 0.1
         let t0 = Date()
 
         let waveform1 = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
@@ -440,7 +440,7 @@ struct WaveformQuaternionEquatableTests {
 
     @Test("Equality - different values")
     func equalityDifferentValues() {
-        let dt: TimeInterval = 0.1
+        let dt: Double = 0.1
         let t0 = Date()
 
         let waveform1 = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: dt, t0: t0)
@@ -463,7 +463,7 @@ struct WaveformQuaternionEquatableTests {
     @Test("Equality - different t0")
     func equalityDifferentT0() {
         let quaternions = [DoubleQuaternion.identity]
-        let dt: TimeInterval = 0.1
+        let dt: Double = 0.1
 
         let waveform1 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: Date())
         let waveform2 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: Date().addingTimeInterval(1))
@@ -474,7 +474,7 @@ struct WaveformQuaternionEquatableTests {
     @Test("Equality - nil vs non-nil t0")
     func equalityNilVsNonNilT0() {
         let quaternions = [FloatQuaternion.identity]
-        let dt: TimeInterval = 0.1
+        let dt: Float = 0.1
 
         let waveform1 = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: nil)
         let waveform2 = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: Date())
@@ -485,7 +485,7 @@ struct WaveformQuaternionEquatableTests {
     @Test("Equality - both nil t0")
     func equalityBothNilT0() {
         let quaternions = [DoubleQuaternion.identity]
-        let dt: TimeInterval = 0.1
+        let dt: Double = 0.1
 
         let waveform1 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: nil)
         let waveform2 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: nil)
@@ -517,7 +517,7 @@ struct WaveformQuaternionHashableTests {
     @Test("Equal waveforms have equal hashes")
     func equalWaveformsEqualHashes() {
         let quaternions = [DoubleQuaternion.identity, DoubleQuaternion.zero]
-        let dt: TimeInterval = 0.1
+        let dt: Double = 0.1
         let t0 = Date()
 
         let waveform1 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
@@ -596,7 +596,7 @@ struct WaveformQuaternionEdgeCasesTests {
 
     @Test("Very small dt")
     func verySmallDt() {
-        let dt: TimeInterval = 1e-9  // 1 nanosecond
+        let dt: Float = 1e-9  // 1 nanosecond
         let waveform = FloatWaveformQuaternion(values: [FloatQuaternion.identity, FloatQuaternion.zero], dt: dt)
 
         #expect(waveform.dt == dt)
@@ -606,7 +606,7 @@ struct WaveformQuaternionEdgeCasesTests {
 
     @Test("Very large dt")
     func veryLargeDt() {
-        let dt: TimeInterval = 86400.0  // 1 day
+        let dt: Double = 86400.0  // 1 day
         let waveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity, DoubleQuaternion.zero], dt: dt)
 
         #expect(waveform.dt == dt)
@@ -621,7 +621,7 @@ struct WaveformQuaternionEdgeCasesTests {
         let waveform = FloatWaveformQuaternion(values: quaternions, dt: 0.001)
 
         #expect(waveform.sampleCount == largeCount)
-        #expect(waveform.duration == TimeInterval(largeCount - 1) * 0.001)
+        #expect(waveform.duration == Float(largeCount - 1) * 0.001)
         #expect(waveform.areAllNormalized == true)
     }
 

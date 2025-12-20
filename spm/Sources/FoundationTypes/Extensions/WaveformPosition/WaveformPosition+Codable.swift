@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension WaveformPosition: Codable {
+extension WaveformPosition: Codable where T: BinaryFloatingPoint {
 
     private enum CodingKeys: String, CodingKey {
         case values
@@ -13,7 +13,7 @@ extension WaveformPosition: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         values = try container.decode([Position<T>].self, forKey: .values)
-        dt = try container.decode(TimeInterval.self, forKey: .dt)
+        dt = try container.decode(T.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
 
         // Validate dt is positive
@@ -104,7 +104,7 @@ extension WaveformPosition {
         var csvContent = "timestamp,x,y,z\n"
 
         for (index, position) in values.enumerated() {
-            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * dt
+            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * Double(dt)
             csvContent += "\(time),\(position.x),\(position.y),\(position.z)\n"
         }
 
@@ -114,7 +114,7 @@ extension WaveformPosition {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformPosition where T: LosslessStringConvertible {
+extension WaveformPosition where T: LosslessStringConvertible & BinaryFloatingPoint {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load
@@ -165,7 +165,7 @@ extension WaveformPosition where T: LosslessStringConvertible {
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
+        let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
         let t0 = Date(timeIntervalSince1970: firstTimestamp)
 
         return WaveformPosition<T>(values: positions, dt: dt, t0: t0)

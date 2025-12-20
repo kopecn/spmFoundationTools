@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension WaveformQuaternion: Codable {
+extension WaveformQuaternion: Codable where T: BinaryFloatingPoint {
 
     private enum CodingKeys: String, CodingKey {
         case values
@@ -13,7 +13,7 @@ extension WaveformQuaternion: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         values = try container.decode([Quaternion<T>].self, forKey: .values)
-        dt = try container.decode(TimeInterval.self, forKey: .dt)
+        dt = try container.decode(T.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
 
         // Validate dt is positive
@@ -104,7 +104,7 @@ extension WaveformQuaternion {
         var csvContent = "timestamp,x,y,z,w\n"
 
         for (index, quaternion) in values.enumerated() {
-            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * dt
+            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * Double(dt)
             csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
         }
 
@@ -114,7 +114,7 @@ extension WaveformQuaternion {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformQuaternion where T: LosslessStringConvertible {
+extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloatingPoint  {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load
@@ -134,7 +134,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
 
         let dataLines = hasHeader ? Array(lines.dropFirst()) : lines
         var quaternions: [Quaternion<T>] = []
-        var timestamps: [Double] = []
+        var timestamps: [T] = []
 
         for line in dataLines {
             let components = line.components(separatedBy: ",")
@@ -142,7 +142,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
                 throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z,w")
             }
 
-            guard let timestamp = Double(components[0]) else {
+            guard let timestamp = T(components[0]) else {
                 throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,x,y,z,w")
             }
 
@@ -167,7 +167,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible {
 
         // Calculate dt from the difference between first two timestamps
         let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
-        let t0 = Date(timeIntervalSince1970: firstTimestamp)
+        let t0 = Date(timeIntervalSince1970: TimeInterval(firstTimestamp))
 
         return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
     }

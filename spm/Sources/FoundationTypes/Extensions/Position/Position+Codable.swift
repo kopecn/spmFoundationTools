@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Implementation
-extension Position {
+extension Position: Codable where T: Codable {
     private enum CodingKeys: String, CodingKey {
         case x, y, z
     }

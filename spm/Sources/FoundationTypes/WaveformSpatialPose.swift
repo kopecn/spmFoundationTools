@@ -37,7 +37,7 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     public var quaternions: [Quaternion<T>]
 
     /// The time interval between consecutive samples in seconds
-    public var dt: TimeInterval
+    public var dt: T
 
     /// The absolute start time of the first sample
     public var t0: Date?
@@ -50,7 +50,7 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
     /// - Note: If positions and quaternions have different counts, `isValid` will be false and `sampleCount` will return the minimum
-    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: TimeInterval, t0: Date?) {
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: T, t0: Date?) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.positions = positions
         self.quaternions = quaternions
@@ -64,7 +64,7 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     }
 
     /// Initialize with positions, quaternions and dt, using default t0=nil
-    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: TimeInterval) {
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: T) {
         self.init(positions: positions, quaternions: quaternions, dt: dt, t0: nil)
     }
 
@@ -74,7 +74,7 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     ///   - dt: The time interval between samples in seconds (must be positive)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(poses: [SpatialPose<T>], dt: TimeInterval, t0: Date?) {
+    public init(poses: [SpatialPose<T>], dt: T, t0: Date?) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.positions = poses.map { $0.position }
         self.quaternions = poses.map { $0.quaternion }
@@ -92,32 +92,32 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     /// - Parameters:
     ///   - poses: Array of SpatialPose instances to convert to waveform
     ///   - dt: The time interval between samples in seconds (must be positive)
-    public init(poses: [SpatialPose<T>], dt: TimeInterval) {
+    public init(poses: [SpatialPose<T>], dt: T) {
         self.init(poses: poses, dt: dt, t0: nil)
     }
 
     // MARK: - Computed Properties (Available to all pose types)
 
     /// Get the total duration of the waveform
-    public var duration: TimeInterval {
+    public var duration: T {
         guard sampleCount > 1 else { return 0 }
-        return TimeInterval(sampleCount - 1) * dt
+        return T(sampleCount - 1) * dt
     }
 
     /// Get the sampling frequency (Hz)
-    public var samplingFrequency: Double {
+    public var samplingFrequency: T {
         return 1.0 / dt
     }
 
     /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: Double {
+    public var nyquistFrequency: T {
         return samplingFrequency / 2.0
     }
 
     /// Get the end time of the waveform
     public var endTime: Date? {
         guard let t0 = t0 else { return nil }
-        return t0.addingTimeInterval(duration)
+        return t0.addingTimeInterval(TimeInterval(duration))
     }
 
     /// Get the number of samples (minimum of positions and quaternions count)
@@ -158,14 +158,19 @@ extension WaveformSpatialPose where T == Float {
     public var normalized: WaveformSpatialPose<T> {
         let normalizedPositions = positions.map { $0.normalized }
         let normalizedQuaternions = quaternions.map { $0.normalized }
-        return WaveformSpatialPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+        return WaveformSpatialPose<T>(
+            positions: normalizedPositions,
+            quaternions: normalizedQuaternions,
+            dt: dt,
+            t0: t0
+        )
     }
 
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
     public var componentWaveforms:
         (
-            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
-            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
+            positions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>),
+            quaternions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
         )
     {
         let posXValues = positions.map { $0.x }
@@ -179,15 +184,15 @@ extension WaveformSpatialPose where T == Float {
 
         return (
             positions: (
-                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
-                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
-                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
+                x: Waveform1D<T, T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T, T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T, T>(values: posZValues, dt: dt, t0: t0)
             ),
             quaternions: (
-                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
-                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
-                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
-                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
+                x: Waveform1D<T, T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T, T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T, T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T, T>(values: quatWValues, dt: dt, t0: t0)
             )
         )
     }
@@ -230,14 +235,19 @@ extension WaveformSpatialPose where T == Double {
     public var normalized: WaveformSpatialPose<T> {
         let normalizedPositions = positions.map { $0.normalized }
         let normalizedQuaternions = quaternions.map { $0.normalized }
-        return WaveformSpatialPose<T>(positions: normalizedPositions, quaternions: normalizedQuaternions, dt: dt, t0: t0)
+        return WaveformSpatialPose<T>(
+            positions: normalizedPositions,
+            quaternions: normalizedQuaternions,
+            dt: dt,
+            t0: t0
+        )
     }
 
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
     public var componentWaveforms:
         (
-            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
-            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
+            positions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>),
+            quaternions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
         )
     {
         let posXValues = positions.map { $0.x }
@@ -251,15 +261,15 @@ extension WaveformSpatialPose where T == Double {
 
         return (
             positions: (
-                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
-                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
-                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
+                x: Waveform1D<T, T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T, T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T, T>(values: posZValues, dt: dt, t0: t0)
             ),
             quaternions: (
-                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
-                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
-                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
-                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
+                x: Waveform1D<T, T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T, T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T, T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T, T>(values: quatWValues, dt: dt, t0: t0)
             )
         )
     }

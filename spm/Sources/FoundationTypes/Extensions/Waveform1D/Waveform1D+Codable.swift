@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Codable Support
-extension Waveform1D: Codable where T: Codable {
+extension Waveform1D: Codable where T: Codable, U: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case values
@@ -13,7 +13,7 @@ extension Waveform1D: Codable where T: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         values = try container.decode([T].self, forKey: .values)
-        dt = try container.decode(TimeInterval.self, forKey: .dt)
+        dt = try container.decode(U.self, forKey: .dt)
         t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
 
         // Validate dt is positive
@@ -32,20 +32,20 @@ extension Waveform1D: Codable where T: Codable {
 }
 
 // MARK: - File Loading/Saving
-extension Waveform1D where T: Codable {
+extension Waveform1D where T: Codable, U: Codable {
 
     /// Load a Waveform1D from a JSON file at the specified URL
     /// - Parameter url: The URL of the JSON file to load
     /// - Returns: A decoded Waveform1D instance
     /// - Throws: Decoding errors or file reading errors
-    public static func load(from url: URL) throws -> Waveform1D<T> {
+    public static func load(from url: URL) throws -> Waveform1D<T, U> {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
 
         // Use milliseconds since 1970 for better precision
         decoder.dateDecodingStrategy = .millisecondsSince1970
 
-        return try decoder.decode(Waveform1D<T>.self, from: data)
+        return try decoder.decode(Waveform1D<T, U>.self, from: data)
     }
 
     /// Save the Waveform1D to a JSON file at the specified URL
@@ -66,10 +66,10 @@ extension Waveform1D where T: Codable {
     /// - Parameter data: The JSON data to decode
     /// - Returns: A decoded Waveform1D instance
     /// - Throws: Decoding errors
-    public static func from(jsonData data: Data) throws -> Waveform1D<T> {
+    public static func from(jsonData data: Data) throws -> Waveform1D<T, U> {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
-        return try decoder.decode(Waveform1D<T>.self, from: data)
+        return try decoder.decode(Waveform1D<T, U>.self, from: data)
     }
 
     /// Convert the Waveform1D to JSON data
@@ -109,9 +109,16 @@ extension FloatWaveform1D {
     }
 }
 
-extension IntWaveform1D {
+extension IntFWaveform1D {
     /// Load an IntWaveform1D from a JSON file
-    public static func loadFromFile(_ url: URL) throws -> IntWaveform1D {
+    public static func loadFromFile(_ url: URL) throws -> IntFWaveform1D {
+        return try load(from: url)
+    }
+}
+
+extension IntDWaveform1D {
+    /// Load an IntWaveform1D from a JSON file
+    public static func loadFromFile(_ url: URL) throws -> IntDWaveform1D {
         return try load(from: url)
     }
 }

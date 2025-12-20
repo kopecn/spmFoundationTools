@@ -3,10 +3,10 @@ import Foundation
 // MARK: - Codable Implementation
 
 /// Conformance to `Codable` for the `Quaternion` type.
-/// 
+///
 /// This extension enables encoding and decoding of quaternions to and from formats such as JSON.
 /// The x, y, z, and w components are encoded as separate fields.
-/// 
+///
 /// Example encoding output:
 /// ```json
 /// {
@@ -23,7 +23,7 @@ import Foundation
 /// let data = try JSONEncoder().encode(q)
 /// let decoded = try JSONDecoder().decode(Quaternion<Double>.self, from: data)
 /// ```
-extension Quaternion {
+extension Quaternion: Codable where T: Codable {
     private enum CodingKeys: String, CodingKey {
         case x, y, z, w
     }

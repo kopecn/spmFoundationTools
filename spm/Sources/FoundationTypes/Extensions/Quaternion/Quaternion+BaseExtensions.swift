@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Equatable
 
 /// Enables equality comparison for `Quaternion` values.
-/// 
+///
 /// Two quaternions are equal if all their vector components are equal.
 /// - Parameters:
 ///   - lhs: The left-hand side quaternion.
@@ -19,7 +19,7 @@ extension Quaternion: Equatable {
 // MARK: - Hashable
 
 /// Enables hashing for `Quaternion` values when the underlying type is `Hashable`.
-/// 
+///
 /// Hashes the x, y, z, and w components of the quaternion.
 extension Quaternion: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
@@ -33,7 +33,7 @@ extension Quaternion: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 /// Provides readable string representations for `Quaternion` values.
-/// 
+///
 /// - `description`: Returns a string in the form "Quaternion(x: ..., y: ..., z: ..., w: ...)".
 /// - `debugDescription`: Returns a string in the form "Quaternion<T>(x: ..., y: ..., z: ..., w: ...)".
 extension Quaternion: CustomStringConvertible, CustomDebugStringConvertible {
@@ -49,4 +49,3 @@ extension Quaternion: CustomStringConvertible, CustomDebugStringConvertible {
         return "Quaternion<\(T.self)>(x: \(x), y: \(y), z: \(z), w: \(w))"
     }
 }
-

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Equatable
 
 /// Enables equality comparison for `SpatialPose` values.
-/// 
+///
 /// Two spatial poses are equal if both their position (`_pos`) and rotation (`_rot`) components are equal.
 /// - Parameters:
 ///   - lhs: The left-hand side spatial pose.
@@ -18,7 +18,7 @@ extension SpatialPose: Equatable {
 // MARK: - Hashable
 
 /// Enables hashing for `SpatialPose` values when the underlying type is `Hashable`.
-/// 
+///
 /// Hashes both the position and rotation components of the spatial pose.
 extension SpatialPose: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
@@ -30,7 +30,7 @@ extension SpatialPose: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 /// Provides readable string representations for `SpatialPose` values.
-/// 
+///
 /// - `description`: Returns a string in the form "SpatialPose(position: (x, y, z), rotation: (qx, qy, qz, qw))".
 /// - `debugDescription`: Returns a string in the form "SpatialPose<T>(position: (x, y, z), rotation: (qx, qy, qz, qw))".
 extension SpatialPose: CustomStringConvertible, CustomDebugStringConvertible {

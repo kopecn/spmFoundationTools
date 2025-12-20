@@ -29,7 +29,7 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     public var values: [Quaternion<T>]
 
     /// The time interval between consecutive samples in seconds
-    public var dt: TimeInterval
+    public var dt: T
 
     /// The absolute start time of the first sample
     public var t0: Date?
@@ -40,7 +40,7 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     ///   - dt: The time interval between samples in seconds (must be positive)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(values: [Quaternion<T>], dt: TimeInterval, t0: Date?) {
+    public init(values: [Quaternion<T>], dt: T, t0: Date?) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
@@ -53,32 +53,32 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     }
 
     /// Initialize with values and dt, using default t0=nil
-    public init(values: [Quaternion<T>], dt: TimeInterval) {
+    public init(values: [Quaternion<T>], dt: T) {
         self.init(values: values, dt: dt, t0: nil)
     }
 
     // MARK: - Computed Properties (Available to all quaternion types)
 
     /// Get the total duration of the waveform
-    public var duration: TimeInterval {
+    public var duration: T {
         guard values.count > 1 else { return 0 }
-        return TimeInterval(values.count - 1) * dt
+        return T(values.count - 1) * dt
     }
 
     /// Get the sampling frequency (Hz)
-    public var samplingFrequency: Double {
+    public var samplingFrequency: T {
         return 1.0 / dt
     }
 
     /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: Double {
+    public var nyquistFrequency: T {
         return samplingFrequency / 2.0
     }
 
     /// Get the end time of the waveform
     public var endTime: Date? {
         guard let t0 = t0 else { return nil }
-        return t0.addingTimeInterval(duration)
+        return t0.addingTimeInterval(TimeInterval(duration))
     }
 
     /// Get the number of samples
@@ -109,17 +109,18 @@ extension WaveformQuaternion where T == Float {
     }
 
     /// Extract component waveforms (x, y, z, w)
-    public var componentWaveforms: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>) {
+    public var componentWaveforms: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
+    {
         let xValues = values.map { $0.x }
         let yValues = values.map { $0.y }
         let zValues = values.map { $0.z }
         let wValues = values.map { $0.w }
 
         return (
-            x: Waveform1D<T>(values: xValues, dt: dt, t0: t0),
-            y: Waveform1D<T>(values: yValues, dt: dt, t0: t0),
-            z: Waveform1D<T>(values: zValues, dt: dt, t0: t0),
-            w: Waveform1D<T>(values: wValues, dt: dt, t0: t0)
+            x: Waveform1D<T, T>(values: xValues, dt: dt, t0: t0),
+            y: Waveform1D<T, T>(values: yValues, dt: dt, t0: t0),
+            z: Waveform1D<T, T>(values: zValues, dt: dt, t0: t0),
+            w: Waveform1D<T, T>(values: wValues, dt: dt, t0: t0)
         )
     }
 }
@@ -146,17 +147,18 @@ extension WaveformQuaternion where T == Double {
     }
 
     /// Extract component waveforms (x, y, z, w)
-    public var componentWaveforms: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>) {
+    public var componentWaveforms: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
+    {
         let xValues = values.map { $0.x }
         let yValues = values.map { $0.y }
         let zValues = values.map { $0.z }
         let wValues = values.map { $0.w }
 
         return (
-            x: Waveform1D<T>(values: xValues, dt: dt, t0: t0),
-            y: Waveform1D<T>(values: yValues, dt: dt, t0: t0),
-            z: Waveform1D<T>(values: zValues, dt: dt, t0: t0),
-            w: Waveform1D<T>(values: wValues, dt: dt, t0: t0)
+            x: Waveform1D<T, T>(values: xValues, dt: dt, t0: t0),
+            y: Waveform1D<T, T>(values: yValues, dt: dt, t0: t0),
+            z: Waveform1D<T, T>(values: zValues, dt: dt, t0: t0),
+            w: Waveform1D<T, T>(values: wValues, dt: dt, t0: t0)
         )
     }
 }
@@ -166,10 +168,10 @@ extension WaveformQuaternion {
 
     /// Create a waveform from component waveforms
     public static func from(
-        x: Waveform1D<T>,
-        y: Waveform1D<T>,
-        z: Waveform1D<T>,
-        w: Waveform1D<T>
+        x: Waveform1D<T, T>,
+        y: Waveform1D<T, T>,
+        z: Waveform1D<T, T>,
+        w: Waveform1D<T, T>
     ) -> WaveformQuaternion<T>? {
         // Check sample counts match
         guard x.values.count == y.values.count && y.values.count == z.values.count && z.values.count == w.values.count
@@ -209,6 +211,7 @@ extension WaveformQuaternion {
 
 // MARK: - Equatable
 extension WaveformQuaternion: Equatable {
+    //FIXME: - move dt check above array check provide quick exit if fails condition
     public static func == (lhs: WaveformQuaternion<T>, rhs: WaveformQuaternion<T>) -> Bool {
         // Compare values array
         guard lhs.values == rhs.values else { return false }

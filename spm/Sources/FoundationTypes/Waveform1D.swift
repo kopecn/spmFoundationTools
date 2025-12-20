@@ -1,9 +1,10 @@
 import Foundation
 
 // Convenience typealiases for common use cases
-public typealias DoubleWaveform1D = Waveform1D<Double>
-public typealias FloatWaveform1D = Waveform1D<Float>
-public typealias IntWaveform1D = Waveform1D<Int>
+public typealias DoubleWaveform1D = Waveform1D<Double, Double>
+public typealias FloatWaveform1D = Waveform1D<Float, Float>
+public typealias IntDWaveform1D = Waveform1D<Int, Double>
+public typealias IntFWaveform1D = Waveform1D<Int, Float>
 
 /// A one-dimensional waveform data structure representing time-series data.
 ///
@@ -23,12 +24,12 @@ public typealias IntWaveform1D = Waveform1D<Int>
 /// // Float waveform
 /// var floatWaveform = Waveform1D<Float>(values: [1.0, 2.0, 3.0])
 /// ```
-public struct Waveform1D<T: Numeric & Sendable>: Sendable {
+public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendable>: Sendable {
     /// The sampled data values of the waveform
     public var values: [T]
 
     /// The time interval between consecutive samples in seconds
-    public var dt: TimeInterval
+    public var dt: U
 
     /// The absolute start time of the first sample
     public var t0: Date?
@@ -39,7 +40,7 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
     ///   - dt: The time interval between samples in seconds (must be positive, defaults to 1.0)
     ///   - t0: The absolute start time of the first sample (optional)
     /// - Precondition: dt must be greater than 0
-    public init(values: [T], dt: TimeInterval = 1.0, t0: Date? = nil) {
+    public init(values: [T], dt: U = 1.0, t0: Date? = nil) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
@@ -49,25 +50,25 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
     // MARK: - Computed Properties
 
     /// Get the total duration of the waveform
-    public var duration: TimeInterval {
+    public var duration: U {
         guard values.count > 1 else { return 0 }
-        return TimeInterval(values.count - 1) * dt
+        return U(values.count - 1) * dt
     }
 
     /// Get the sampling frequency (Hz)
-    public var samplingFrequency: Double {
+    public var samplingFrequency: U {
         return 1.0 / dt
     }
 
     /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: Double {
+    public var nyquistFrequency: U {
         return samplingFrequency / 2.0
     }
 
     /// Get the end time of the waveform
     public var endTime: Date? {
         guard let t0 = t0 else { return nil }
-        return t0.addingTimeInterval(duration)
+        return t0.addingTimeInterval(TimeInterval(duration))
     }
 
     /// Get the number of samples
@@ -166,7 +167,7 @@ extension Waveform1D where T: SignedInteger {
 
 // MARK: - Equatable
 extension Waveform1D: Equatable {
-    public static func == (lhs: Waveform1D<T>, rhs: Waveform1D<T>) -> Bool {
+    public static func == (lhs: Waveform1D<T, U>, rhs: Waveform1D<T, U>) -> Bool {
         // Compare values array
         guard lhs.values == rhs.values else { return false }
 

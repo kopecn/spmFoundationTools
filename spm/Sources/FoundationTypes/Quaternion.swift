@@ -25,7 +25,7 @@ public typealias DoubleQuaternion = Quaternion<Double>
 /// // Quaternion from components
 /// let quat = DoubleQuaternion(x: 0, y: 0, z: 0, w: 1)
 /// ```
-public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>: Codable {
+public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
 
     /// The SIMD vector representation of the quaternion (x, y, z, w)
     public var vector: SIMD4<T> {

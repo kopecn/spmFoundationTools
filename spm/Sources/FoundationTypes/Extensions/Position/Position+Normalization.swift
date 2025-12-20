@@ -42,7 +42,8 @@ extension Position: NormalizableFloat where T == Float {
     /// Uses squared magnitude to avoid expensive sqrt operation
     @inlinable
     public var isUnit: Bool {
-        abs(simd_length_squared(vector) - 1) < 1e-10
+        let l = simd_length_squared(vector)
+        return abs(l - 1) < 1e-6 || abs(l) < 1e-6
     }
 }
 

@@ -31,7 +31,7 @@ public typealias DoubleSpatialPose = SpatialPose<Double>
 ///     qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0
 /// )
 /// ```
-public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>: Codable {
+public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
 
     /// The position vector (x, y, z)
     public var _pos: Position<T>
@@ -105,7 +105,6 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     public var quaternion: Quaternion<T> {
         return _rot
     }
-
 
     // MARK: - Initializers
 
@@ -337,7 +336,6 @@ extension SpatialPose where T == Double {
         return simd_double4x4(col0, col1, col2, col3)
     }
 }
-
 
 // Unsafe but explicit Sendable conformance
 extension SpatialPose: @unchecked Sendable {}
