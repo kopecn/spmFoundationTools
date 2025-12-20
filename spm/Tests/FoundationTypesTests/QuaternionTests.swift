@@ -1045,8 +1045,10 @@ struct QuaternionNormalizationOperationsTests {
         #expect(original.isNormalized == false)
 
         // Normalized should be unit length
-        let magnitude = sqrt(normalized.x * normalized.x + normalized.y * normalized.y +
-                           normalized.z * normalized.z + normalized.w * normalized.w)
+        let magnitude = sqrt(
+            normalized.x * normalized.x + normalized.y * normalized.y + normalized.z * normalized.z + normalized.w
+                * normalized.w
+        )
         #expect(abs(magnitude - 1.0) < 1e-6)
         #expect(normalized.isNormalized == true)
     }
@@ -1061,8 +1063,10 @@ struct QuaternionNormalizationOperationsTests {
         #expect(original.isNormalized == false)
 
         // Normalized should be unit length
-        let magnitude = sqrt(normalized.x * normalized.x + normalized.y * normalized.y +
-                           normalized.z * normalized.z + normalized.w * normalized.w)
+        let magnitude = sqrt(
+            normalized.x * normalized.x + normalized.y * normalized.y + normalized.z * normalized.z + normalized.w
+                * normalized.w
+        )
         #expect(abs(magnitude - 1.0) < 1e-15)
         #expect(normalized.isNormalized == true)
     }

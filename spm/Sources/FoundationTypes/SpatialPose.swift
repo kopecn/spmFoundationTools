@@ -106,18 +106,6 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
         return _rot
     }
 
-    /// Check if the rotation quaternion is normalized.
-    ///
-    /// Returns the cached normalization flag for the rotation.
-    /// This flag is automatically maintained by the Quaternion type:
-    /// - Set to `true` after calling `normalize()`
-    /// - Set to `false` when any rotation component is modified (qx, qy, qz, qw, or vector)
-    ///
-    /// - Returns: `true` if the rotation quaternion is normalized, `false` otherwise
-    @inlinable
-    public var isNormalized: Bool {
-        return _rot.isNormalized
-    }
 
     // MARK: - Initializers
 
@@ -159,7 +147,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     /// - Parameter matrix: The 4x4 transformation matrix
     /// - Note: The matrix should be in column-major order with rotation in the upper-left 3x3
     ///         and translation in the last column
-    public init(homogeneousTransform: simd_float4x4) where T == Float {
+    public init(homogeneousTransform: simd_float4x4, normalize: Bool = false) where T == Float {
         // Extract translation from last column
         let position = SIMD3<T>(
             homogeneousTransform.columns.3.x,
@@ -214,13 +202,16 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
         }
         // Quaternions extracted from matrices are not guaranteed to be normalized
         self._rot = Quaternion<T>(vector: rotation, isNormalized: false)
+        if normalize {
+            self._rot.normalize()
+        }
     }
 
     /// Initialize a pose from a 4x4 homogeneous transformation matrix
     /// - Parameter matrix: The 4x4 transformation matrix
     /// - Note: The matrix should be in column-major order with rotation in the upper-left 3x3
     ///         and translation in the last column
-    public init(homogeneousTransform: simd_double4x4) where T == Double {
+    public init(homogeneousTransform: simd_double4x4, normalize: Bool = false) where T == Double {
         // Extract translation from last column
         let position = SIMD3<T>(
             homogeneousTransform.columns.3.x,
@@ -275,6 +266,9 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
         }
         // Quaternions extracted from matrices are not guaranteed to be normalized
         self._rot = Quaternion<T>(vector: rotation, isNormalized: false)
+        if normalize {
+            self._rot.normalize()
+        }
     }
 
     // MARK: - Static Properties
@@ -320,17 +314,6 @@ extension SpatialPose where T == Float {
 
         return simd_float4x4(col0, col1, col2, col3)
     }
-
-    /// Normalize the rotation quaternion in place.
-    ///
-    /// Converts the rotation quaternion to unit length, making it a valid rotation.
-    /// After calling this method, `isNormalized` will return `true`.
-    ///
-    /// If the quaternion has near-zero magnitude, it will be set to the identity rotation.
-    @inlinable
-    public mutating func normalize() {
-        _rot.normalize()
-    }
 }
 
 extension SpatialPose where T == Double {
@@ -353,51 +336,24 @@ extension SpatialPose where T == Double {
 
         return simd_double4x4(col0, col1, col2, col3)
     }
-
-    /// Normalize the rotation quaternion in place.
-    ///
-    /// Converts the rotation quaternion to unit length, making it a valid rotation.
-    /// After calling this method, `isNormalized` will return `true`.
-    ///
-    /// If the quaternion has near-zero magnitude, it will be set to the identity rotation.
-    @inlinable
-    public mutating func normalize() {
-        _rot.normalize()
-    }
 }
 
-
-// MARK: - Codable Implementation
-extension SpatialPose {
-    private enum CodingKeys: String, CodingKey {
-        case x, y, z
-        case qx, qy, qz, qw
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let x = try container.decode(T.self, forKey: .x)
-        let y = try container.decode(T.self, forKey: .y)
-        let z = try container.decode(T.self, forKey: .z)
-        let qx = try container.decode(T.self, forKey: .qx)
-        let qy = try container.decode(T.self, forKey: .qy)
-        let qz = try container.decode(T.self, forKey: .qz)
-        let qw = try container.decode(T.self, forKey: .qw)
-
-        self.init(x: x, y: y, z: z, qx: qx, qy: qy, qz: qz, qw: qw)
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(x, forKey: .x)
-        try container.encode(y, forKey: .y)
-        try container.encode(z, forKey: .z)
-        try container.encode(qx, forKey: .qx)
-        try container.encode(qy, forKey: .qy)
-        try container.encode(qz, forKey: .qz)
-        try container.encode(qw, forKey: .qw)
-    }
-}
 
 // Unsafe but explicit Sendable conformance
 extension SpatialPose: @unchecked Sendable {}
+
+extension SpatialPose {
+
+    /// Check if the rotation quaternion is normalized.
+    ///
+    /// Returns the cached normalization flag for the rotation.
+    /// This flag is automatically maintained by the Quaternion type:
+    /// - Set to `true` after calling `normalize()`
+    /// - Set to `false` when any rotation component is modified (qx, qy, qz, qw, or vector)
+    ///
+    /// - Returns: `true` if the rotation quaternion is normalized, `false` otherwise
+    @inlinable
+    public var isNormalized: Bool {
+        return _rot.isNormalized
+    }
+}
