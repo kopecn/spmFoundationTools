@@ -3,10 +3,10 @@ import Foundation
 // MARK: - Codable Conformance
 
 /// Conformance to `Codable` for the `Complex` type.
-/// 
+///
 /// This extension enables encoding and decoding of complex numbers to and from formats such as JSON.
 /// The real and imaginary components are encoded as separate fields.
-/// 
+///
 /// Example encoding output:
 /// ```json
 /// {

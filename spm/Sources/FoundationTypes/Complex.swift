@@ -20,20 +20,34 @@ public typealias ComplexFloat = Complex<Float>
 /// ```
 public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
     /// Internal SIMD2 storage for real and imaginary components.
-    public var storage: SIMD2<T>
+    public var storage: SIMD2<T> {
+        didSet {
+            _isNormalized = false
+        }
+    }
+
+    /// Cached flag indicating whether this complex number is normalized
+    @usableFromInline
+    internal var _isNormalized: Bool
 
     /// The real part of the complex number.
     @inlinable
     public var real: T {
         get { storage.x }
-        set { storage.x = newValue }
+        set {
+            storage.x = newValue
+            _isNormalized = false
+        }
     }
 
     /// The imaginary part of the complex number.
     @inlinable
     public var imaginary: T {
         get { storage.y }
-        set { storage.y = newValue }
+        set {
+            storage.y = newValue
+            _isNormalized = false
+        }
     }
 
     /// Converts the complex number to an array of components `[real, imaginary]`.
@@ -46,16 +60,21 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     /// - Parameters:
     ///   - real: The real part.
     ///   - imaginary: The imaginary part.
+    ///   - isNormalized: Whether this complex number is known to be normalized (default: false)
     @inlinable
-    public init(real: T, imaginary: T) {
+    public init(real: T, imaginary: T, isNormalized: Bool = false) {
         self.storage = SIMD2(real, imaginary)
+        self._isNormalized = isNormalized
     }
 
     /// Initializes a complex number from a SIMD2 vector.
-    /// - Parameter vector: A SIMD2 vector where `x` is the real part and `y` is the imaginary part.
+    /// - Parameters:
+    ///   - vector: A SIMD2 vector where `x` is the real part and `y` is the imaginary part.
+    ///   - isNormalized: Whether this complex number is known to be normalized (default: false)
     @inlinable
-    public init(vector: SIMD2<T>) {
+    public init(vector: SIMD2<T>, isNormalized: Bool = false) {
         self.storage = vector
+        self._isNormalized = isNormalized
     }
 
     /// Creates a complex number from an array of components.
@@ -68,7 +87,8 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     /// ```
     public init?(components: [T]) {
         guard components.count == 2 else { return nil }
-        self.init(real: components[0], imaginary: components[1])
+        self.storage = SIMD2(components[0], components[1])
+        self._isNormalized = false
     }
 }
 
@@ -98,6 +118,7 @@ extension Complex where T == Double {
         var cosValue: T = 0
         __sincos(phase, &sinValue, &cosValue)
         self.storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
+        self._isNormalized = abs(magnitude - 1) < 1e-10
     }
 }
 
@@ -124,5 +145,6 @@ extension Complex where T == Float {
         var cosValue: T = 0
         __sincosf(phase, &sinValue, &cosValue)
         self.storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
+        self._isNormalized = abs(magnitude - 1) < 1e-5
     }
 }

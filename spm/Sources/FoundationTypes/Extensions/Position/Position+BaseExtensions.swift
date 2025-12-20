@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Equatable
 
 /// Enables equality comparison for `Position` values.
-/// 
+///
 /// Two positions are equal if all their vector components are equal.
 /// - Parameters:
 ///   - lhs: The left-hand side position.
@@ -19,7 +19,7 @@ extension Position: Equatable {
 // MARK: - Hashable
 
 /// Enables hashing for `Position` values when the underlying type is `Hashable`.
-/// 
+///
 /// Hashes the x, y, and z components of the position.
 extension Position: Hashable where T: Hashable {
     @inlinable
@@ -33,7 +33,7 @@ extension Position: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 /// Provides readable string representations for `Position` values.
-/// 
+///
 /// - `description`: Returns a string in the form "Position(x: ..., y: ..., z: ...)".
 /// - `debugDescription`: Returns a string in the form "Position<T>(x: ..., y: ..., z: ...)".
 extension Position: CustomStringConvertible, CustomDebugStringConvertible {

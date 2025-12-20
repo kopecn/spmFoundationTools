@@ -3,7 +3,7 @@ import Foundation
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 /// Provides readable string representations for `Complex` numbers.
-/// 
+///
 /// - `description`: Returns a string in the form "a + bi" or "a - bi".
 /// - `debugDescription`: Returns a string in the form "Complex(real: a, imaginary: b)".
 extension Complex: CustomStringConvertible, CustomDebugStringConvertible {

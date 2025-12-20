@@ -29,27 +29,44 @@ public typealias DoublePosition = Position<Double>
 public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
 
     /// The SIMD vector representation of the position (x, y, z)
-    public var vector: SIMD3<T>
+    public var vector: SIMD3<T> {
+        didSet {
+            _isNormalized = false
+        }
+    }
+
+    /// Cached flag indicating whether this complex number is normalized
+    @usableFromInline
+    internal var _isNormalized: Bool
 
     /// The x component
     @inlinable
     public var x: T {
         get { vector.x }
-        set { vector.x = newValue }
+        set {
+            vector.x = newValue
+            _isNormalized = false
+        }
     }
 
     /// The y component
     @inlinable
     public var y: T {
         get { vector.y }
-        set { vector.y = newValue }
+        set {
+            vector.y = newValue
+            _isNormalized = false
+        }
     }
 
     /// The z component
     @inlinable
     public var z: T {
         get { vector.z }
-        set { vector.z = newValue }
+        set {
+            vector.z = newValue
+            _isNormalized = false
+        }
     }
 
     /// Convert position to an array of components
@@ -66,24 +83,27 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - y: The y component
     ///   - z: The z component
     @inlinable
-    public init(x: T, y: T, z: T) {
+    public init(x: T, y: T, z: T, isNormalized: Bool = false) {
         self.vector = SIMD3<T>(x, y, z)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from a SIMD3 vector
     /// - Parameter vector: The SIMD3 vector (x, y, z)
     @inlinable
-    public init(vector: SIMD3<T>) {
+    public init(vector: SIMD3<T>, isNormalized: Bool = false) {
         self.vector = vector
+        self._isNormalized = isNormalized
     }
 
     /// Create a position from an array of components
     /// - Parameter components: Array containing [x, y, z] values
     /// - Returns: A new position, or nil if the array doesn't have exactly 3 elements
     @inlinable
-    public init?(components: [T]) {
+    public init?(components: [T], isNormalized: Bool = false) {
         guard components.count == 3 else { return nil }
         self.init(x: components[0], y: components[1], z: components[2])
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from cylindrical coordinates
@@ -92,11 +112,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - angle: The angle in radians from the positive x-axis
     ///   - height: The height (z-coordinate)
     @inlinable
-    public init(cylindrical radius: T, angle: T, height: T) where T == Double {
+    public init(cylindrical radius: T, angle: T, height: T, isNormalized: Bool = false) where T == Double {
         var sinAngle: T = 0
         var cosAngle: T = 0
         __sincos(angle, &sinAngle, &cosAngle)
         self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from cylindrical coordinates
@@ -105,11 +126,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - angle: The angle in radians from the positive x-axis
     ///   - height: The height (z-coordinate)
     @inlinable
-    public init(cylindrical radius: T, angle: T, height: T) where T == Float {
+    public init(cylindrical radius: T, angle: T, height: T, isNormalized: Bool = false) where T == Float {
         var sinAngle: T = 0
         var cosAngle: T = 0
         __sincosf(angle, &sinAngle, &cosAngle)
         self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from spherical coordinates (mathematical/geographic convention)
@@ -119,7 +141,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     @inlinable
-    public init(spherical radius: T, azimuth: T, elevation: T) where T == Double {
+    public init(spherical radius: T, azimuth: T, elevation: T, isNormalized: Bool = false) where T == Double {
         var sinAzimuth: T = 0
         var cosAzimuth: T = 0
         var sinElevation: T = 0
@@ -128,6 +150,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincos(elevation, &sinElevation, &cosElevation)
         let radiusXY = radius * cosElevation
         self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from spherical coordinates (mathematical/geographic convention)
@@ -137,7 +160,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - elevation: The elevation angle in radians (latitude), measured from the equator (xy-plane).
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     @inlinable
-    public init(spherical radius: T, azimuth: T, elevation: T) where T == Float {
+    public init(spherical radius: T, azimuth: T, elevation: T, isNormalized: Bool = false) where T == Float {
         var sinAzimuth: T = 0
         var cosAzimuth: T = 0
         var sinElevation: T = 0
@@ -146,6 +169,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincosf(elevation, &sinElevation, &cosElevation)
         let radiusXY = radius * cosElevation
         self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
@@ -157,7 +181,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
     @inlinable
-    public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Double {
+    public init(sphericalISO radius: T, azimuth: T, polar: T, isNormalized: Bool = false) where T == Double {
         var sinAzimuth: T = 0
         var cosAzimuth: T = 0
         var sinPolar: T = 0
@@ -166,6 +190,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincos(polar, &sinPolar, &cosPolar)
         let radiusXY = radius * sinPolar
         self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
+        self._isNormalized = isNormalized
     }
 
     /// Initialize a position from spherical coordinates (ISO 80000-2:2019 physics convention)
@@ -177,7 +202,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///            z-axis following ISO 80000-2:2019 physics convention. 0 is the north pole (+z axis),
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
     @inlinable
-    public init(sphericalISO radius: T, azimuth: T, polar: T) where T == Float {
+    public init(sphericalISO radius: T, azimuth: T, polar: T, isNormalized: Bool = false) where T == Float {
         var sinAzimuth: T = 0
         var cosAzimuth: T = 0
         var sinPolar: T = 0
@@ -186,11 +211,12 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincosf(polar, &sinPolar, &cosPolar)
         let radiusXY = radius * sinPolar
         self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
+        self._isNormalized = isNormalized
     }
 }
 
 // MARK: - Convenience
-extension Position where T: BinaryFloatingPoint{
+extension Position where T: BinaryFloatingPoint {
     // MARK: - Static Properties
 
     /// The origin position (0, 0, 0)
