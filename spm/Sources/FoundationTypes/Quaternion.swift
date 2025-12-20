@@ -109,6 +109,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - z: The z component (k coefficient)
     ///   - w: The w component (real part)
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    @inlinable
     public init(x: T, y: T, z: T, w: T, isNormalized: Bool = false) {
         self.vector = SIMD4<T>(x, y, z, w)
         self._isNormalized = isNormalized
@@ -118,6 +119,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// - Parameters:
     ///   - vector: The SIMD4 vector (x, y, z, w)
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    @inlinable
     public init(vector: SIMD4<T>, isNormalized: Bool = false) {
         self.vector = vector
         self._isNormalized = isNormalized
@@ -128,6 +130,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - imaginary: The imaginary part as a 3D vector
     ///   - real: The real part
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
+    @inlinable
     public init(imaginary: SIMD3<T>, real: T, isNormalized: Bool = false) {
         self.vector = SIMD4<T>(imaginary.x, imaginary.y, imaginary.z, real)
         self._isNormalized = isNormalized
@@ -138,8 +141,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - angle: The rotation angle in radians
     public init(axis: SIMD3<T>, angle: T) where T == Double {
         let halfAngle = angle * 0.5
-        let sinHalfAngle = sin(halfAngle)
-        let cosHalfAngle = cos(halfAngle)
+        var sinHalfAngle: T = 0
+        var cosHalfAngle: T = 0
+        __sincos(halfAngle, &sinHalfAngle, &cosHalfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
@@ -158,8 +162,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - angle: The rotation angle in radians
     public init(axis: SIMD3<T>, angle: T) where T == Float {
         let halfAngle = angle * 0.5
-        let sinHalfAngle = sin(halfAngle)
-        let cosHalfAngle = cos(halfAngle)
+        var sinHalfAngle: T = 0
+        var cosHalfAngle: T = 0
+        __sincosf(halfAngle, &sinHalfAngle, &cosHalfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
@@ -179,14 +184,18 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - yaw: Rotation around z-axis in radians
     public init(roll: T, pitch: T, yaw: T) where T == Float {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        let c = SIMD3<T>(cos(halfAngles.x), cos(halfAngles.y), cos(halfAngles.z))
-        let s = SIMD3<T>(sin(halfAngles.x), sin(halfAngles.y), sin(halfAngles.z))
+        var sx: T = 0, cx: T = 0
+        var sy: T = 0, cy: T = 0
+        var sz: T = 0, cz: T = 0
+        __sincosf(halfAngles.x, &sx, &cx)
+        __sincosf(halfAngles.y, &sy, &cy)
+        __sincosf(halfAngles.z, &sz, &cz)
 
         self.vector = SIMD4<T>(
-            s.x * c.y * c.z - c.x * s.y * s.z,
-            c.x * s.y * c.z + s.x * c.y * s.z,
-            c.x * c.y * s.z - s.x * s.y * c.z,
-            c.x * c.y * c.z + s.x * s.y * s.z
+            sx * cy * cz - cx * sy * sz,
+            cx * sy * cz + sx * cy * sz,
+            cx * cy * sz - sx * sy * cz,
+            cx * cy * cz + sx * sy * sz
         )
         self._isNormalized = true
     }
@@ -198,14 +207,18 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - yaw: Rotation around z-axis in radians
     public init(roll: T, pitch: T, yaw: T) where T == Double {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        let c = SIMD3<T>(cos(halfAngles.x), cos(halfAngles.y), cos(halfAngles.z))
-        let s = SIMD3<T>(sin(halfAngles.x), sin(halfAngles.y), sin(halfAngles.z))
+        var sx: T = 0, cx: T = 0
+        var sy: T = 0, cy: T = 0
+        var sz: T = 0, cz: T = 0
+        __sincos(halfAngles.x, &sx, &cx)
+        __sincos(halfAngles.y, &sy, &cy)
+        __sincos(halfAngles.z, &sz, &cz)
 
         self.vector = SIMD4<T>(
-            s.x * c.y * c.z - c.x * s.y * s.z,
-            c.x * s.y * c.z + s.x * c.y * s.z,
-            c.x * c.y * s.z - s.x * s.y * c.z,
-            c.x * c.y * c.z + s.x * s.y * s.z
+            sx * cy * cz - cx * sy * sz,
+            cx * sy * cz + sx * cy * sz,
+            cx * cy * sz - sx * sy * cz,
+            cx * cy * cz + sx * sy * sz
         )
         self._isNormalized = true
     }

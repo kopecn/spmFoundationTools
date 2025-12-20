@@ -69,20 +69,20 @@ extension Quaternion {
             let wy = quaternion.w * quaternion.y
             let wz = quaternion.w * quaternion.z
 
-            // Upper triangle off-diagonal elements
-            self.xy = two * (xy_prod - wz)
-            self.xz = two * (xz_prod + wy)
-            self.yz = two * (yz_prod - wx)
+            // Upper triangle off-diagonal elements (rewritten for FMA fusion)
+            self.xy = two * xy_prod - two * wz
+            self.xz = two * xz_prod + two * wy
+            self.yz = two * yz_prod - two * wx
 
-            // Lower triangle off-diagonal elements (symmetric counterparts)
-            self.yx = two * (xy_prod + wz)
-            self.zx = two * (xz_prod - wy)
-            self.zy = two * (yz_prod + wx)
+            // Lower triangle off-diagonal elements (symmetric counterparts, rewritten for FMA fusion)
+            self.yx = two * xy_prod + two * wz
+            self.zx = two * xz_prod - two * wy
+            self.zy = two * yz_prod + two * wx
 
-            // Diagonal elements
-            self.xx = 1 - two * (y2 + z2)
-            self.yy = 1 - two * (x2 + z2)
-            self.zz = 1 - two * (x2 + y2)
+            // Diagonal elements (rewritten for FMA fusion)
+            self.xx = 1 - two * y2 - two * z2
+            self.yy = 1 - two * x2 - two * z2
+            self.zz = 1 - two * x2 - two * y2
         }
     }
 
