@@ -14,7 +14,7 @@ extension Waveform1D: Codable where T: Codable, U: Codable {
 
         values = try container.decode([T].self, forKey: .values)
         dt = try container.decode(U.self, forKey: .dt)
-        t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
+        t0 = try container.decodeIfPresent(PrecisionTimestamp.self, forKey: .t0)
 
         // Validate dt is positive
         guard dt > 0 else {
@@ -41,10 +41,6 @@ extension Waveform1D where T: Codable, U: Codable {
     public static func load(from url: URL) throws -> Waveform1D<T, U> {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
-
-        // Use milliseconds since 1970 for better precision
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-
         return try decoder.decode(Waveform1D<T, U>.self, from: data)
     }
 
@@ -53,11 +49,7 @@ extension Waveform1D where T: Codable, U: Codable {
     /// - Throws: Encoding errors or file writing errors
     public func save(to url: URL) throws {
         let encoder = JSONEncoder()
-
-        // Configure encoder for pretty printing and milliseconds since 1970 for precision
         encoder.outputFormatting = .prettyPrinted
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-
         let data = try encoder.encode(self)
         try data.write(to: url)
     }
@@ -68,7 +60,6 @@ extension Waveform1D where T: Codable, U: Codable {
     /// - Throws: Decoding errors
     public static func from(jsonData data: Data) throws -> Waveform1D<T, U> {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
         return try decoder.decode(Waveform1D<T, U>.self, from: data)
     }
 
@@ -78,7 +69,6 @@ extension Waveform1D where T: Codable, U: Codable {
     public func toJSONData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        encoder.dateEncodingStrategy = .millisecondsSince1970
         return try encoder.encode(self)
     }
 

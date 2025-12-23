@@ -14,7 +14,7 @@ extension WaveformQuaternion: Codable where T: BinaryFloatingPoint {
 
         values = try container.decode([Quaternion<T>].self, forKey: .values)
         dt = try container.decode(T.self, forKey: .dt)
-        t0 = try container.decodeIfPresent(Date.self, forKey: .t0)
+        t0 = try container.decodeIfPresent(PrecisionTimestamp.self, forKey: .t0)
 
         // Validate dt is positive
         guard dt > 0 else {
@@ -41,10 +41,6 @@ extension WaveformQuaternion {
     public static func load(from url: URL) throws -> WaveformQuaternion<T> {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
-
-        // Use milliseconds since 1970 for better precision
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-
         return try decoder.decode(WaveformQuaternion<T>.self, from: data)
     }
 
@@ -53,11 +49,7 @@ extension WaveformQuaternion {
     /// - Throws: Encoding errors or file writing errors
     public func save(to url: URL) throws {
         let encoder = JSONEncoder()
-
-        // Configure encoder for pretty printing and milliseconds since 1970 for precision
         encoder.outputFormatting = .prettyPrinted
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-
         let data = try encoder.encode(self)
         try data.write(to: url)
     }
@@ -68,7 +60,6 @@ extension WaveformQuaternion {
     /// - Throws: Decoding errors
     public static func from(jsonData data: Data) throws -> WaveformQuaternion<T> {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
         return try decoder.decode(WaveformQuaternion<T>.self, from: data)
     }
 
@@ -78,7 +69,6 @@ extension WaveformQuaternion {
     public func toJSONData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        encoder.dateEncodingStrategy = .millisecondsSince1970
         return try encoder.encode(self)
     }
 
@@ -104,7 +94,7 @@ extension WaveformQuaternion {
         var csvContent = "timestamp,x,y,z,w\n"
 
         for (index, quaternion) in values.enumerated() {
-            let time = (t0?.timeIntervalSince1970 ?? 0) + Double(index) * Double(dt)
+            let time = Double(t0?.secondsSinceEpoch ?? 0) + Double(index) * Double(dt)
             csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
         }
 
@@ -167,7 +157,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloating
 
         // Calculate dt from the difference between first two timestamps
         let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
-        let t0 = Date(timeIntervalSince1970: TimeInterval(firstTimestamp))
+        let t0 = PrecisionTimestamp(secondsSinceEpoch: UInt64(firstTimestamp))
 
         return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
     }

@@ -12,7 +12,7 @@ public typealias FloatWaveformQuaternion = WaveformQuaternion<Float>
 ///
 /// Example usage:
 /// ```swift
-/// let startTime = Date()
+/// let startTime = PrecisionTimestamp()
 /// let samplingInterval = 0.001 // 1ms sampling
 /// let quaternions: [FloatQuaternion] = [
 ///     FloatQuaternion.identity,
@@ -32,7 +32,7 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     public var dt: T
 
     /// The absolute start time of the first sample
-    public var t0: Date?
+    public var t0: PrecisionTimestamp?
 
     /// Initialize a quaternion waveform
     /// - Parameters:
@@ -40,7 +40,7 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     ///   - dt: The time interval between samples in seconds (must be positive)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(values: [Quaternion<T>], dt: T, t0: Date?) {
+    public init(values: [Quaternion<T>], dt: T, t0: PrecisionTimestamp?) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
@@ -73,12 +73,6 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     /// Get the Nyquist frequency (Hz)
     public var nyquistFrequency: T {
         return samplingFrequency / 2.0
-    }
-
-    /// Get the end time of the waveform
-    public var endTime: Date? {
-        guard let t0 = t0 else { return nil }
-        return t0.addingTimeInterval(TimeInterval(duration))
     }
 
     /// Get the number of samples
@@ -216,7 +210,7 @@ extension WaveformQuaternion: Equatable {
         // Compare values array
         guard lhs.values == rhs.values else { return false }
 
-        // Compare dt with appropriate tolerance for TimeInterval (Double)
+        // Compare dt
         // Use relative tolerance for better handling of different magnitudes
         let dtEqual: Bool
         if lhs.dt == 0 && rhs.dt == 0 {

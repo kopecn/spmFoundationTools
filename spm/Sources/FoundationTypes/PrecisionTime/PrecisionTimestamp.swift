@@ -1,6 +1,7 @@
 import simd
 import Foundation
 
+
 /// Represents a high-precision timestamp as (seconds since epoch, attoseconds within the second),
 /// stored in a SIMD2<UInt64> vector for efficient operations.
 ///
@@ -16,9 +17,20 @@ import Foundation
 /// - No floating-point rounding errors
 /// - High precision timing for scientific applications
 /// - (Planned --> Compatibility with Swift Embedded no Foundation required)
-public struct PrecisionTimestamp {
+public struct PrecisionTimestamp: Sendable {
     /// SIMD vector: [secondsSinceEpoch, attosecondsOfSecond]
     public var storage: SIMD2<UInt64>
+
+    /// Time scale specification (e.g., TAI, TT, TCB).
+    /// Recommended default: `.tai`, but defaults to `nil` if not specified.
+    public var timescale: Timescale?
+
+    /// Spatial reference frame (e.g., Earth center, solar system barycenter).
+    /// Recommended default: `.earthCenter`, but defaults to `nil` if not specified.
+    public var referenceFrame: ReferenceFrame?
+
+    /// Uncertainty in the timestamp, measured in attoseconds (±).
+    public var uncertainty: UInt64?
 
     // MARK: - Constants
 
@@ -65,41 +77,90 @@ public struct PrecisionTimestamp {
 
     /// Initialize with seconds since epoch and attoseconds within that second, automatically wrapping if needed.
     @inlinable
-    public init(secondsSinceEpoch: UInt64, attosecondsOfSecond: UInt64 = 0) {
+    public init(
+        secondsSinceEpoch: UInt64,
+        attosecondsOfSecond: UInt64 = 0,
+        timescale: Timescale? = nil,
+        referenceFrame: ReferenceFrame? = nil,
+        uncertainty: UInt64? = nil
+    ) {
         let extraSeconds = attosecondsOfSecond / Self.attosecondsPerSecond
         let wrappedAttoseconds = attosecondsOfSecond % Self.attosecondsPerSecond
         self.storage = SIMD2(secondsSinceEpoch + extraSeconds, wrappedAttoseconds)
+        self.timescale = timescale
+        self.referenceFrame = referenceFrame
+        self.uncertainty = uncertainty
     }
 
     /// Initialize directly from a SIMD2 vector.
     @inlinable
-    public init(storage: SIMD2<UInt64>) {
-        self.init(secondsSinceEpoch: storage[0], attosecondsOfSecond: storage[1])
+    public init(
+        storage: SIMD2<UInt64>,
+        timescale: Timescale? = nil,
+        referenceFrame: ReferenceFrame? = nil,
+        uncertainty: UInt64? = nil
+    ) {
+        self.storage = storage
+        self.timescale = timescale
+        self.referenceFrame = referenceFrame
+        self.uncertainty = uncertainty
     }
 
     /// Initialize with days since epoch and attoseconds within that day.
     @inlinable
-    public init(daysSinceEpoch: UInt64, attosecondsOfDay: UInt64) {
+    public init(
+        daysSinceEpoch: UInt64,
+        attosecondsOfDay: UInt64,
+        timescale: Timescale? = nil,
+        referenceFrame: ReferenceFrame? = nil,
+        uncertainty: UInt64? = nil
+    ) {
         let totalSeconds = daysSinceEpoch * Self.secondsPerDay
         let secondsInAttoseconds = attosecondsOfDay / Self.attosecondsPerSecond
         let remainingAttoseconds = attosecondsOfDay % Self.attosecondsPerSecond
-        self.init(secondsSinceEpoch: totalSeconds + secondsInAttoseconds, attosecondsOfSecond: remainingAttoseconds)
+        self.init(
+            secondsSinceEpoch: totalSeconds + secondsInAttoseconds,
+            attosecondsOfSecond: remainingAttoseconds,
+            timescale: timescale,
+            referenceFrame: referenceFrame,
+            uncertainty: uncertainty
+        )
     }
 
     /// Initialize to the current time.
     @inlinable
-    public init() {
-        self.init(date: Date())
+    public init(
+        timescale: Timescale? = nil,
+        referenceFrame: ReferenceFrame? = nil,
+        uncertainty: UInt64? = nil
+    ) {
+        self.init(
+            date: Date(),
+            timescale: timescale,
+            referenceFrame: referenceFrame,
+            uncertainty: uncertainty
+        )
     }
 
     /// Initialize from a Foundation Date.
     @inlinable
-    public init(date: Date) {
+    public init(
+        date: Date,
+        timescale: Timescale? = nil,
+        referenceFrame: ReferenceFrame? = nil,
+        uncertainty: UInt64? = nil
+    ) {
         let timeInterval = date.timeIntervalSince1970
         let seconds = UInt64(timeInterval)
         let fractionalSeconds = timeInterval - Double(seconds)
         let attosecondsOfSecond = UInt64(fractionalSeconds * Double(Self.attosecondsPerSecond))
-        self.init(secondsSinceEpoch: seconds, attosecondsOfSecond: attosecondsOfSecond)
+        self.init(
+            secondsSinceEpoch: seconds,
+            attosecondsOfSecond: attosecondsOfSecond,
+            timescale: timescale,
+            referenceFrame: referenceFrame,
+            uncertainty: uncertainty
+        )
     }
 
     /// Convert to a Foundation Date.

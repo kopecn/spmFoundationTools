@@ -21,7 +21,7 @@ struct WaveformSpatialPoseInitializationTests {
             FloatQuaternion(x: 0.0, y: 0.0, z: 1.0, w: 0.0),
         ]
         let dt: Float = 0.01
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
 
         let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
 
@@ -45,7 +45,7 @@ struct WaveformSpatialPoseInitializationTests {
             DoubleQuaternion.zero,
         ]
         let dt: TimeInterval = 0.001
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
 
         let waveform = DoubleWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
 
@@ -110,7 +110,7 @@ struct WaveformSpatialPoseInitializationTests {
     func singlePoseInitialization() {
         let position = DoublePosition(x: 0.5, y: 0.5, z: 0.5)
         let quaternion = DoubleQuaternion(x: 0.5, y: 0.5, z: 0.5, w: 0.5)
-        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.1, t0: Date())
+        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.1, t0: PrecisionTimestamp())
 
         #expect(waveform.positions.count == 1)
         #expect(waveform.quaternions.count == 1)
@@ -177,28 +177,6 @@ struct WaveformSpatialPoseComputedPropertiesTests {
         let expectedNyquist = (1.0 / 0.002) / 2.0
 
         #expect(waveform.nyquistFrequency == expectedNyquist)
-    }
-
-    @Test("End time calculation with t0")
-    func endTimeWithT0() {
-        let t0 = Date()
-        let positions = Array(repeating: FloatPosition.origin, count: 3)
-        let quaternions = Array(repeating: FloatQuaternion.identity, count: 3)
-        let dt: Float = 0.1
-        let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
-
-        let expectedEndTime = t0.addingTimeInterval(TimeInterval(waveform.duration))
-        #expect(waveform.endTime == expectedEndTime)
-    }
-
-    @Test("End time calculation without t0")
-    func endTimeCalculationWithoutT0() {
-        let waveform = DoubleWaveformSpatialPose(
-            positions: [DoublePosition.origin, DoublePosition.unitX],
-            quaternions: [DoubleQuaternion.identity, DoubleQuaternion.zero]
-        )
-
-        #expect(waveform.endTime == nil)
     }
 
     @Test("Sample count with equal arrays")
@@ -389,7 +367,7 @@ struct WaveformSpatialPoseComponentWaveformsTests {
             FloatQuaternion(x: 18.0, y: 19.0, z: 20.0, w: 21.0),
         ]
         let dt: Float = 0.1
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
         let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
 
         let components = waveform.componentWaveforms
@@ -463,7 +441,7 @@ struct WaveformSpatialPoseComponentWaveformsTests {
     func componentWaveformsSinglePose() {
         let position = DoublePosition(x: 1.5, y: 2.5, z: 3.5)
         let quaternion = DoubleQuaternion(x: 4.5, y: 5.5, z: 6.5, w: 7.5)
-        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.01, t0: Date())
+        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.01, t0: PrecisionTimestamp())
 
         let components = waveform.componentWaveforms
 
@@ -481,7 +459,7 @@ struct WaveformSpatialPoseComponentWaveformsTests {
         let positions = [FloatPosition.origin, FloatPosition.unitX]
         let quaternions = [FloatQuaternion.identity, FloatQuaternion.zero]
         let dt: Float = 0.1
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
         let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
 
         let positionWaveform = waveform.positionWaveform
@@ -506,7 +484,7 @@ struct WaveformSpatialPoseUtilityMethodsTests {
         let positions = [FloatPosition.origin, FloatPosition.unitX, FloatPosition.unitY]
         let quaternions = [FloatQuaternion.identity, FloatQuaternion.zero, FloatQuaternion.identity]
         let dt: Float = 0.1
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
 
         let positionWaveform = FloatWaveformPosition(values: positions, dt: dt, t0: t0)
         let quaternionWaveform = FloatWaveformQuaternion(values: quaternions, dt: dt, t0: t0)
@@ -552,8 +530,8 @@ struct WaveformSpatialPoseUtilityMethodsTests {
 
     @Test("Create from separate waveforms - mismatched t0")
     func createFromSeparateWaveformsMismatchedT0() {
-        let t0_1 = Date()
-        let t0_2 = Date().addingTimeInterval(60)  // Different t0
+        let t0_1 = PrecisionTimestamp(secondsSinceEpoch: 1)
+        let t0_2 = PrecisionTimestamp(secondsSinceEpoch: 2)  // Different t0
 
         let positionWaveform = DoubleWaveformPosition(values: [DoublePosition.origin], dt: 0.1, t0: t0_1)
         let quaternionWaveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: 0.1, t0: t0_2)
@@ -576,7 +554,7 @@ struct WaveformSpatialPoseEquatableHashableTests {
         let positions = [FloatPosition.origin, FloatPosition.unitX]
         let quaternions = [FloatQuaternion.identity, FloatQuaternion.zero]
         let dt: Float = 0.1
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
 
         let waveform1 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
         let waveform2 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
@@ -622,8 +600,8 @@ struct WaveformSpatialPoseEquatableHashableTests {
         let positions = [FloatPosition.origin]
         let quaternions = [FloatQuaternion.identity]
         let dt: Float = 0.1
-        let t0_1 = Date()
-        let t0_2 = Date().addingTimeInterval(60)
+        let t0_1 = PrecisionTimestamp(secondsSinceEpoch: 0)
+        let t0_2 = PrecisionTimestamp(secondsSinceEpoch: 60)
 
         let waveform1 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0_1)
         let waveform2 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0_2)
@@ -692,7 +670,7 @@ struct WaveformSpatialPoseStringRepresentationTests {
     func debugDescriptionFormat() {
         let positions = [DoublePosition.origin]
         let quaternions = [DoubleQuaternion.identity]
-        let t0 = Date()
+        let t0 = PrecisionTimestamp()
         let waveform = DoubleWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: 0.05, t0: t0)
         let debugDescription = waveform.debugDescription
 
@@ -802,32 +780,6 @@ struct WaveformSpatialPoseEdgeCasesTests {
 
         let normalizedWaveform = waveform.normalized
         #expect(normalizedWaveform.sampleCount == 3)
-    }
-
-    @Test("Extreme timestamp values")
-    func extremeTimestampValues() {
-        let positions = [DoublePosition.origin]
-        let quaternions = [DoubleQuaternion.identity]
-
-        // Very old date
-        let oldDate = Date(timeIntervalSince1970: 0)
-        let waveformOld = DoubleWaveformSpatialPose(
-            positions: positions,
-            quaternions: quaternions,
-            dt: 1.0,
-            t0: oldDate
-        )
-        #expect(waveformOld.t0 == oldDate)
-
-        // Very future date
-        let futureDate = Date(timeIntervalSince1970: 4_102_444_800)  // Year 2100
-        let waveformFuture = DoubleWaveformSpatialPose(
-            positions: positions,
-            quaternions: quaternions,
-            dt: 1.0,
-            t0: futureDate
-        )
-        #expect(waveformFuture.t0 == futureDate)
     }
 
     @Test("Type alias usage")

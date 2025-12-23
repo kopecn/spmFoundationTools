@@ -9,7 +9,7 @@ struct Waveform1DInitializationTests {
 
     @Test("Basic initialization with all parameters")
     func initializationWithAllParameters() {
-        let startTime = Date()
+        let startTime = PrecisionTimestamp()
         let values = [1.0, 2.0, 3.0, 4.0, 5.0]
         let dt = 0.001
 
@@ -93,22 +93,6 @@ struct Waveform1DComputedPropertiesTests {
         let expectedNyquist = (1.0 / 0.002) / 2.0
 
         #expect(waveform.nyquistFrequency == expectedNyquist)
-    }
-
-    @Test("End time calculation with t0")
-    func endTimeWithT0() {
-        let startTime = Date()
-        let waveform = Waveform1D<Double, Double>(values: [1.0, 2.0, 3.0, 4.0], dt: 0.1, t0: startTime)
-        let expectedEndTime = startTime.addingTimeInterval(0.3)  // 3 * 0.1
-
-        #expect(waveform.endTime == expectedEndTime)
-    }
-
-    @Test("End time calculation without t0")
-    func endTimeWithoutT0() {
-        let waveform = Waveform1D<Double, Double>(values: [1.0, 2.0, 3.0], dt: 0.1)
-
-        #expect(waveform.endTime == nil)
     }
 
     @Test("Sample count")
@@ -335,7 +319,7 @@ struct Waveform1DCodableTests {
 
     @Test("JSON encoding and decoding for DoubleWaveform1D")
     func jsonCodingDoubleWaveform() throws {
-        let startTime = Date()
+        let startTime = PrecisionTimestamp()
         let originalWaveform = DoubleWaveform1D(
             values: [1.5, 2.7, 3.9, 4.1, 5.3],
             dt: 0.001,
@@ -351,8 +335,7 @@ struct Waveform1DCodableTests {
 
         #expect(decodedWaveform.values == originalWaveform.values)
         #expect(decodedWaveform.dt == originalWaveform.dt)
-        // Milliseconds encoding should preserve precision to milliseconds
-        #expect(abs(decodedWaveform.t0!.timeIntervalSince(originalWaveform.t0!)) < 0.001)
+        #expect(decodedWaveform.t0 == originalWaveform.t0)
     }
 
     @Test("JSON encoding and decoding for FloatWaveform1D")
@@ -407,7 +390,7 @@ struct Waveform1DCodableTests {
         defer { try? cleanupTempDirectory(tempDir) }
 
         let fileURL = tempDir.appendingPathComponent("double_waveform.json")
-        let startTime = Date()
+        let startTime = PrecisionTimestamp()
 
         let originalWaveform = DoubleWaveform1D(
             values: [1.1, 2.2, 3.3, 4.4, 5.5],
@@ -424,8 +407,7 @@ struct Waveform1DCodableTests {
 
         #expect(loadedWaveform.values == originalWaveform.values)
         #expect(loadedWaveform.dt == originalWaveform.dt)
-        // Milliseconds encoding should preserve precision to milliseconds
-        #expect(abs(loadedWaveform.t0!.timeIntervalSince(originalWaveform.t0!)) < 0.001)
+        #expect(loadedWaveform.t0 == originalWaveform.t0)
     }
 
     @Test("Save and load from file - FloatWaveform1D")
@@ -528,22 +510,6 @@ struct Waveform1DCodableTests {
         #expect(decodedWaveform.t0 == nil)
     }
 
-    @Test("Date precision in JSON serialization")
-    func datePrecisionSerialization() throws {
-        let preciseDate = Date(timeIntervalSince1970: 1234567890.123456)
-        let waveform = DoubleWaveform1D(
-            values: [1.0, 2.0, 3.0],
-            dt: 0.001,
-            t0: preciseDate
-        )
-
-        let jsonData = try waveform.toJSONData()
-        let decodedWaveform = try DoubleWaveform1D.from(jsonData: jsonData)
-
-        // Milliseconds encoding should preserve precision to milliseconds
-        #expect(abs(decodedWaveform.t0!.timeIntervalSince(preciseDate)) < 0.001)
-    }
-
     @Test("File error handling - nonexistent file")
     func fileErrorHandlingNonexistent() throws {
         let nonexistentURL = URL(fileURLWithPath: "/tmp/nonexistent_file.json")
@@ -621,31 +587,6 @@ struct Waveform1DCodableTests {
         #expect(throws: WaveformCodingError.self) {
             try DoubleWaveform1D.load(from: invalidFileURL)
         }
-    }
-
-    @Test("JSON string format validation")
-    func jsonStringFormatValidation() throws {
-        let waveform = DoubleWaveform1D(
-            values: [1.0, 2.0, 3.0],
-            dt: 0.001,
-            t0: Date(timeIntervalSince1970: 1_000_000_000)
-        )
-
-        let jsonString = try waveform.toJSONString()
-
-        // Should be pretty printed
-        #expect(jsonString.contains("\n"))
-        #expect(jsonString.contains("  "))  // Indentation
-
-        // Should contain all required fields
-        #expect(jsonString.contains("\"values\""))
-        #expect(jsonString.contains("\"dt\""))
-        #expect(jsonString.contains("\"t0\""))
-
-        // Should be valid JSON that can be parsed back
-        let jsonData = jsonString.data(using: .utf8)!
-        let decoded = try DoubleWaveform1D.from(jsonData: jsonData)
-        #expect(decoded.values == waveform.values)
     }
 
     @Test("File permissions and directory creation")

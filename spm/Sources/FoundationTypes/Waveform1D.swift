@@ -13,7 +13,7 @@ public typealias IntFWaveform1D = Waveform1D<Int, Float>
 ///
 /// Example usage:
 /// ```swift
-/// let startTime = Date()
+/// let startTime = PrecisionTimestamp()
 /// let samplingInterval = 0.001 // 1ms sampling
 /// let samples: [Double] = [1.0, 2.0, 3.0, 4.0, 5.0]
 /// var waveform = Waveform1D(values: samples, dt: samplingInterval, t0: startTime)
@@ -32,7 +32,7 @@ public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendabl
     public var dt: U
 
     /// The absolute start time of the first sample
-    public var t0: Date?
+    public var t0: PrecisionTimestamp?
 
     /// Initialize a waveform
     /// - Parameters:
@@ -40,7 +40,7 @@ public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendabl
     ///   - dt: The time interval between samples in seconds (must be positive, defaults to 1.0)
     ///   - t0: The absolute start time of the first sample (optional)
     /// - Precondition: dt must be greater than 0
-    public init(values: [T], dt: U = 1.0, t0: Date? = nil) {
+    public init(values: [T], dt: U = 1.0, t0: PrecisionTimestamp? = nil) {
         precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
@@ -63,12 +63,6 @@ public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendabl
     /// Get the Nyquist frequency (Hz)
     public var nyquistFrequency: U {
         return samplingFrequency / 2.0
-    }
-
-    /// Get the end time of the waveform
-    public var endTime: Date? {
-        guard let t0 = t0 else { return nil }
-        return t0.addingTimeInterval(TimeInterval(duration))
     }
 
     /// Get the number of samples
@@ -171,7 +165,7 @@ extension Waveform1D: Equatable {
         // Compare values array
         guard lhs.values == rhs.values else { return false }
 
-        // Compare dt with appropriate tolerance for TimeInterval (Double)
+        // Compare dt
         // Use relative tolerance for better handling of different magnitudes
         let dtEqual: Bool
         if lhs.dt == 0 && rhs.dt == 0 {

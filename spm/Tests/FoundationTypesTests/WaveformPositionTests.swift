@@ -11,7 +11,7 @@ struct WaveformPositionBasicTests {
     @Test("Basic initialization")
     func basicInitialization() {
         let positions = [FloatPosition.origin, FloatPosition.unitX]
-        let waveform = FloatWaveformPosition(values: positions, dt: 0.001, t0: Date())
+        let waveform = FloatWaveformPosition(values: positions, dt: 0.001, t0: PrecisionTimestamp())
 
         #expect(waveform.values.count == 2)
         #expect(waveform.dt == 0.001)
@@ -21,7 +21,7 @@ struct WaveformPositionBasicTests {
     @Test("Codable round-trip")
     func codableRoundTrip() throws {
         let positions = [DoublePosition.origin, DoublePosition.unitX, DoublePosition.unitY]
-        let waveform = DoubleWaveformPosition(values: positions, dt: 0.01, t0: Date())
+        let waveform = DoubleWaveformPosition(values: positions, dt: 0.01, t0: PrecisionTimestamp())
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(waveform)
@@ -39,7 +39,7 @@ struct WaveformPositionBasicTests {
             FloatPosition(x: 1.0, y: 2.0, z: 3.0),
             FloatPosition(x: 4.0, y: 5.0, z: 6.0),
         ]
-        let waveform = FloatWaveformPosition(values: positions, dt: 0.1, t0: Date())
+        let waveform = FloatWaveformPosition(values: positions, dt: 0.1, t0: PrecisionTimestamp())
 
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_poss.csv")
@@ -209,7 +209,7 @@ struct WaveformPositionFileOperationsTests {
             DoublePosition(x: 1.0, y: 2.0, z: 3.0),
             DoublePosition(x: 4.0, y: 5.0, z: 6.0),
         ]
-        let original = DoubleWaveformPosition(values: positions, dt: 0.01, t0: Date())
+        let original = DoubleWaveformPosition(values: positions, dt: 0.01, t0: PrecisionTimestamp())
 
         let fileURL = tempDir.appendingPathComponent("test.json")
         try original.save(to: fileURL)
