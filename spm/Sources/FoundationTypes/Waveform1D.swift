@@ -24,7 +24,7 @@ public typealias IntFWaveform1D = Waveform1D<Int, Float>
 /// // Float waveform
 /// var floatWaveform = Waveform1D<Float>(values: [1.0, 2.0, 3.0])
 /// ```
-public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendable>: Sendable {
+public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendable & SIMDScalar>: Sendable {
     /// The sampled data values of the waveform
     public var values: [T]
 
