@@ -212,4 +212,38 @@ extension PrecisionTimeInterval {
     public static func &-= (lhs: inout PrecisionTimeInterval, rhs: PrecisionTimeInterval) {
         lhs = lhs &- rhs
     }
+
+    // MARK: - Generic Floating-Point Addition
+
+    /// Add a floating-point time interval (in seconds) to this interval
+    /// - Parameter add: Time interval in seconds (supports Double, Float, etc.)
+    /// - Returns: A new interval with the floating-point value added
+    ///
+    /// Example:
+    /// ```swift
+    /// let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+    /// let result = interval.addingTimeInterval(add: 3.14159) // Add pi seconds
+    /// ```
+    @inlinable
+    public func addingTimeInterval<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>(
+        add: T
+    ) -> PrecisionTimeInterval {
+        // Convert floating-point seconds to PrecisionTimeInterval
+        let absValue = abs(add)
+        let sign: NumericSign = add >= 0 ? .positive : .negative
+
+        // Split into seconds and fractional part
+        let seconds = UInt64(absValue)
+        let fractionalSeconds = absValue - T(seconds)
+        let attoseconds = UInt64(fractionalSeconds * T(PrecisionTimeInterval.attosecondsPerSecond))
+
+        // Create interval and use existing arithmetic
+        let interval = PrecisionTimeInterval(
+            seconds: seconds,
+            attoseconds: attoseconds,
+            sign: sign
+        )
+
+        return self + interval
+    }
 }

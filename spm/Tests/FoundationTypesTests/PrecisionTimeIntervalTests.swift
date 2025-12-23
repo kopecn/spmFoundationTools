@@ -498,4 +498,66 @@ struct PrecisionTimeIntervalArithmeticTests {
         }
 
     }
+
+    @Test("Adding Time Interval - Double")
+    func addingTimeIntervalDouble() {
+        // Test adding positive Double
+        let interval1 = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let result1 = interval1.addingTimeInterval(add: 3.14159)
+        #expect(result1.seconds == 13)
+        // Check attoseconds is approximately 0.14159 seconds
+        let expectedAtto1 = UInt64(0.14159 * Double(PrecisionTimeInterval.attosecondsPerSecond))
+        #expect(result1.attoseconds > expectedAtto1 - 1000 && result1.attoseconds < expectedAtto1 + 1000)
+        #expect(result1.sign == .positive)
+
+        // Test adding negative Double
+        let interval2 = PrecisionTimeInterval(seconds: 20, attoseconds: 0, sign: .positive)
+        let result2 = interval2.addingTimeInterval(add: -7.5)
+        #expect(result2.seconds == 12)
+        #expect(result2.attoseconds == 500_000_000_000_000_000) // 0.5 seconds in attoseconds
+        #expect(result2.sign == .positive)
+
+        // Test adding to negative interval
+        let interval3 = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .negative)
+        let result3 = interval3.addingTimeInterval(add: 2.0)
+        #expect(result3.seconds == 3)
+        #expect(result3.attoseconds == 0)
+        #expect(result3.sign == .negative)
+
+        // Test crossing zero from negative to positive
+        let interval4 = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .negative)
+        let result4 = interval4.addingTimeInterval(add: 5.0)
+        #expect(result4.seconds == 2)
+        #expect(result4.attoseconds == 0)
+        #expect(result4.sign == .positive)
+    }
+
+    @Test("Adding Time Interval - Float")
+    func addingTimeIntervalFloat() {
+        let tolerance: UInt64 = 100_000_000_000 // 0.0000001 seconds tolerance for Float precision
+
+        // Test adding positive Float
+        let interval1 = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+        let result1 = interval1.addingTimeInterval(add: Float(2.5))
+        #expect(result1.seconds == 7)
+        let expectedAtto1 = UInt64(0.5 * Float(PrecisionTimeInterval.attosecondsPerSecond))
+        #expect(result1.attoseconds > expectedAtto1 - tolerance && result1.attoseconds < expectedAtto1 + tolerance)
+        #expect(result1.sign == .positive)
+
+        // Test adding negative Float
+        let interval2 = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let result2 = interval2.addingTimeInterval(add: Float(-3.25))
+        #expect(result2.seconds == 6)
+        let expectedAtto2 = UInt64(0.75 * Float(PrecisionTimeInterval.attosecondsPerSecond))
+        #expect(result2.attoseconds > expectedAtto2 - tolerance && result2.attoseconds < expectedAtto2 + tolerance)
+        #expect(result2.sign == .positive)
+
+        // Test precision with small Float value
+        let interval3 = PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
+        let result3 = interval3.addingTimeInterval(add: Float(0.125))
+        #expect(result3.seconds == 1)
+        let expectedAtto3 = UInt64(0.125 * Float(PrecisionTimeInterval.attosecondsPerSecond))
+        #expect(result3.attoseconds > expectedAtto3 - tolerance && result3.attoseconds < expectedAtto3 + tolerance)
+        #expect(result3.sign == .positive)
+    }
 }

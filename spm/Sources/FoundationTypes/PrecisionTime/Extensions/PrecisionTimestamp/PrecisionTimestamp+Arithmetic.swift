@@ -107,4 +107,38 @@ extension PrecisionTimestamp {
     public static prefix func + (operand: PrecisionTimestamp) -> PrecisionTimestamp {
         operand
     }
+
+    // MARK: - Generic Floating-Point Addition
+
+    /// Add a floating-point time interval (in seconds) to a timestamp
+    /// - Parameter add: Time interval in seconds (supports Double, Float, etc.)
+    /// - Returns: A new timestamp advanced by the given interval
+    ///
+    /// Example:
+    /// ```swift
+    /// let timestamp = PrecisionTimestamp(seconds: 100)
+    /// let result = timestamp.addingTimeInterval(add: 2.5) // Add 2.5 seconds
+    /// ```
+    @inlinable
+    public func addingTimeInterval<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>(
+        add: T
+    ) -> PrecisionTimestamp {
+        // Convert floating-point seconds to PrecisionTimeInterval
+        let absValue = abs(add)
+        let sign: NumericSign = add >= 0 ? .positive : .negative
+
+        // Split into seconds and fractional part
+        let seconds = UInt64(absValue)
+        let fractionalSeconds = absValue - T(seconds)
+        let attoseconds = UInt64(fractionalSeconds * T(PrecisionTimeInterval.attosecondsPerSecond))
+
+        // Create interval and use existing arithmetic
+        let interval = PrecisionTimeInterval(
+            seconds: seconds,
+            attoseconds: attoseconds,
+            sign: sign
+        )
+
+        return self + interval
+    }
 }
