@@ -44,14 +44,14 @@ public struct PrecisionTimestamp: Sendable {
 
     /// Seconds since Unix epoch (1970-01-01 00:00:00 UTC).
     @inlinable
-    public var secondsSinceEpoch: UInt64 {
+    public var seconds: UInt64 {
         get { storage[0] }
         set { storage[0] = newValue }
     }
 
     /// Attoseconds within the current second (0 to 999,999,999,999,999,999).
     @inlinable
-    public var attosecondsOfSecond: UInt64 {
+    public var attoseconds: UInt64 {
         get { storage[1] }
         set {
             // Automatically wrap if exceeds one second
@@ -64,13 +64,13 @@ public struct PrecisionTimestamp: Sendable {
     /// Days since Unix epoch.
     @inlinable
     public var daysSinceEpoch: UInt64 {
-        get { secondsSinceEpoch / Self.secondsPerDay }
+        get { seconds / Self.secondsPerDay }
     }
 
     /// Seconds within the current day (0 to 86,399).
     @inlinable
     public var secondsOfDay: UInt64 {
-        get { secondsSinceEpoch % Self.secondsPerDay }
+        get { seconds % Self.secondsPerDay }
     }
 
     // MARK: - Initializers
@@ -78,15 +78,15 @@ public struct PrecisionTimestamp: Sendable {
     /// Initialize with seconds since epoch and attoseconds within that second, automatically wrapping if needed.
     @inlinable
     public init(
-        secondsSinceEpoch: UInt64,
-        attosecondsOfSecond: UInt64 = 0,
+        seconds: UInt64,
+        attoseconds: UInt64 = 0,
         timescale: Timescale? = nil,
         referenceFrame: ReferenceFrame? = nil,
         uncertainty: UInt64? = nil
     ) {
-        let extraSeconds = attosecondsOfSecond / Self.attosecondsPerSecond
-        let wrappedAttoseconds = attosecondsOfSecond % Self.attosecondsPerSecond
-        self.storage = SIMD2(secondsSinceEpoch + extraSeconds, wrappedAttoseconds)
+        let extraSeconds = attoseconds / Self.attosecondsPerSecond
+        let wrappedAttoseconds = attoseconds % Self.attosecondsPerSecond
+        self.storage = SIMD2(seconds + extraSeconds, wrappedAttoseconds)
         self.timescale = timescale
         self.referenceFrame = referenceFrame
         self.uncertainty = uncertainty
@@ -118,13 +118,10 @@ public struct PrecisionTimestamp: Sendable {
         let totalSeconds = daysSinceEpoch * Self.secondsPerDay
         let secondsInAttoseconds = attosecondsOfDay / Self.attosecondsPerSecond
         let remainingAttoseconds = attosecondsOfDay % Self.attosecondsPerSecond
-        self.init(
-            secondsSinceEpoch: totalSeconds + secondsInAttoseconds,
-            attosecondsOfSecond: remainingAttoseconds,
-            timescale: timescale,
-            referenceFrame: referenceFrame,
-            uncertainty: uncertainty
-        )
+        self.storage = SIMD2(totalSeconds + secondsInAttoseconds, remainingAttoseconds)
+        self.timescale = timescale
+        self.referenceFrame = referenceFrame
+        self.uncertainty = uncertainty
     }
 
     /// Initialize to the current time.
@@ -154,21 +151,19 @@ public struct PrecisionTimestamp: Sendable {
         let seconds = UInt64(timeInterval)
         let fractionalSeconds = timeInterval - Double(seconds)
         let attosecondsOfSecond = UInt64(fractionalSeconds * Double(Self.attosecondsPerSecond))
-        self.init(
-            secondsSinceEpoch: seconds,
-            attosecondsOfSecond: attosecondsOfSecond,
-            timescale: timescale,
-            referenceFrame: referenceFrame,
-            uncertainty: uncertainty
-        )
+
+        self.storage = SIMD2(seconds, attosecondsOfSecond)
+        self.timescale = timescale
+        self.referenceFrame = referenceFrame
+        self.uncertainty = uncertainty
     }
 
     /// Convert to a Foundation Date.
     /// Note: Date only has microsecond precision, so attosecond precision will be lost.
     @inlinable
     public var asFoundationDate: Date {
-        let totalSeconds = Double(secondsSinceEpoch)
-        let fractionalSeconds = Double(attosecondsOfSecond) / Double(Self.attosecondsPerSecond)
+        let totalSeconds = Double(seconds)
+        let fractionalSeconds = Double(attoseconds) / Double(Self.attosecondsPerSecond)
         return Date(timeIntervalSince1970: totalSeconds + fractionalSeconds)
     }
 }

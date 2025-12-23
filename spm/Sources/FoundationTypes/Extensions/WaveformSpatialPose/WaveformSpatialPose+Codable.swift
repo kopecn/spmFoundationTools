@@ -102,7 +102,7 @@ extension WaveformSpatialPose where T: BinaryFloatingPoint {
         for index in 0..<sampleCount {
             let position = positions[index]
             let quaternion = quaternions[index]
-            let time = Double(t0?.secondsSinceEpoch ?? 0) + Double(index) * Double(dt)
+            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
             csvContent +=
                 "\(time),\(position.x),\(position.y),\(position.z),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
         }
@@ -177,7 +177,7 @@ extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatin
 
         // Calculate dt from the difference between first two timestamps
         let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
-        let t0 = PrecisionTimestamp(secondsSinceEpoch: UInt64(firstTimestamp))
+        let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformSpatialPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
     }

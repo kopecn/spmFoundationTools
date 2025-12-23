@@ -94,7 +94,7 @@ extension WaveformPosition {
         var csvContent = "timestamp,x,y,z\n"
 
         for (index, position) in values.enumerated() {
-            let time = Double(t0?.secondsSinceEpoch ?? 0) + Double(index) * Double(dt)
+            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
             csvContent += "\(time),\(position.x),\(position.y),\(position.z)\n"
         }
 
@@ -156,7 +156,7 @@ extension WaveformPosition where T: LosslessStringConvertible & BinaryFloatingPo
 
         // Calculate dt from the difference between first two timestamps
         let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
-        let t0 = PrecisionTimestamp(secondsSinceEpoch: UInt64(firstTimestamp))
+        let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformPosition<T>(values: positions, dt: dt, t0: t0)
     }

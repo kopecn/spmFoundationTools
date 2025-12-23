@@ -6,7 +6,7 @@ extension PrecisionTimestamp: CustomStringConvertible, CustomDebugStringConverti
         let date = asFoundationDate
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        var result = isoFormatter.string(from: date) + " (\(secondsSinceEpoch)s + \(attosecondsOfSecond)as)"
+        var result = isoFormatter.string(from: date) + " (\(seconds)s + \(attoseconds)as)"
 
         if let timescale = timescale {
             result += " [\(timescale.rawValue)]"
@@ -22,7 +22,7 @@ extension PrecisionTimestamp: CustomStringConvertible, CustomDebugStringConverti
     }
 
     public var debugDescription: String {
-        var result = "PrecisionTimestamp(secondsSinceEpoch: \(secondsSinceEpoch), attosecondsOfSecond: \(attosecondsOfSecond)"
+        var result = "PrecisionTimestamp(seconds: \(seconds), attosecondsOfSecond: \(attoseconds)"
 
         if let timescale = timescale {
             result += ", timescale: .\(timescale)"

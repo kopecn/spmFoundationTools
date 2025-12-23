@@ -94,7 +94,7 @@ extension WaveformQuaternion {
         var csvContent = "timestamp,x,y,z,w\n"
 
         for (index, quaternion) in values.enumerated() {
-            let time = Double(t0?.secondsSinceEpoch ?? 0) + Double(index) * Double(dt)
+            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
             csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
         }
 
@@ -157,7 +157,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloating
 
         // Calculate dt from the difference between first two timestamps
         let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
-        let t0 = PrecisionTimestamp(secondsSinceEpoch: UInt64(firstTimestamp))
+        let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
     }

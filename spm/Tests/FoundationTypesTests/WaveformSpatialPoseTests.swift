@@ -530,8 +530,8 @@ struct WaveformSpatialPoseUtilityMethodsTests {
 
     @Test("Create from separate waveforms - mismatched t0")
     func createFromSeparateWaveformsMismatchedT0() {
-        let t0_1 = PrecisionTimestamp(secondsSinceEpoch: 1)
-        let t0_2 = PrecisionTimestamp(secondsSinceEpoch: 2)  // Different t0
+        let t0_1 = PrecisionTimestamp(seconds: 1)
+        let t0_2 = PrecisionTimestamp(seconds: 2)  // Different t0
 
         let positionWaveform = DoubleWaveformPosition(values: [DoublePosition.origin], dt: 0.1, t0: t0_1)
         let quaternionWaveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dt: 0.1, t0: t0_2)
@@ -600,8 +600,8 @@ struct WaveformSpatialPoseEquatableHashableTests {
         let positions = [FloatPosition.origin]
         let quaternions = [FloatQuaternion.identity]
         let dt: Float = 0.1
-        let t0_1 = PrecisionTimestamp(secondsSinceEpoch: 0)
-        let t0_2 = PrecisionTimestamp(secondsSinceEpoch: 60)
+        let t0_1 = PrecisionTimestamp(seconds: 0)
+        let t0_2 = PrecisionTimestamp(seconds: 60)
 
         let waveform1 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0_1)
         let waveform2 = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: dt, t0: t0_2)
