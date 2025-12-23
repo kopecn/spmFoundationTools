@@ -27,7 +27,7 @@ public struct PrecisionTimeInterval: Sendable {
         let totalSeconds = seconds &+ extraSeconds
 
         // Clamp to max if overflow
-        if totalSeconds < seconds || totalSeconds == UInt64.max{
+        if totalSeconds < seconds || totalSeconds == UInt64.max {
             return SIMD2(UInt64.max, 0)
         } else {
             return SIMD2(totalSeconds, normalizedAttoseconds)
@@ -48,12 +48,13 @@ public struct PrecisionTimeInterval: Sendable {
 
     @inlinable
     public init(
-        seconds: UInt64 = 0, 
+        seconds: UInt64 = 0,
         attoseconds: UInt64 = 0,
         sign: NumericSign
     ) {
         self.init(
-            storage: SIMD2(seconds,attoseconds), sign: sign
+            storage: SIMD2(seconds, attoseconds),
+            sign: sign
         )
     }
 

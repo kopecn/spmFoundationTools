@@ -17,11 +17,11 @@ extension PrecisionTimeInterval: CustomStringConvertible, CustomDebugStringConve
 
         return "\(signString)\(seconds).\(trimmed)s"
     }
-    
+
     public var debugDescription: String {
         "PrecisionTimeInterval(seconds: \(seconds), attoseconds: \(attoseconds), sign: .\(sign))"
     }
-    
+
 }
 
 // MARK: - Hashable

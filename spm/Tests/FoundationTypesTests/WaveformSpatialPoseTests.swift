@@ -110,7 +110,12 @@ struct WaveformSpatialPoseInitializationTests {
     func singlePoseInitialization() {
         let position = DoublePosition(x: 0.5, y: 0.5, z: 0.5)
         let quaternion = DoubleQuaternion(x: 0.5, y: 0.5, z: 0.5, w: 0.5)
-        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.1, t0: PrecisionTimestamp())
+        let waveform = DoubleWaveformSpatialPose(
+            positions: [position],
+            quaternions: [quaternion],
+            dt: 0.1,
+            t0: PrecisionTimestamp()
+        )
 
         #expect(waveform.positions.count == 1)
         #expect(waveform.quaternions.count == 1)
@@ -441,7 +446,12 @@ struct WaveformSpatialPoseComponentWaveformsTests {
     func componentWaveformsSinglePose() {
         let position = DoublePosition(x: 1.5, y: 2.5, z: 3.5)
         let quaternion = DoubleQuaternion(x: 4.5, y: 5.5, z: 6.5, w: 7.5)
-        let waveform = DoubleWaveformSpatialPose(positions: [position], quaternions: [quaternion], dt: 0.01, t0: PrecisionTimestamp())
+        let waveform = DoubleWaveformSpatialPose(
+            positions: [position],
+            quaternions: [quaternion],
+            dt: 0.01,
+            t0: PrecisionTimestamp()
+        )
 
         let components = waveform.componentWaveforms
 

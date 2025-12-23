@@ -1,4 +1,3 @@
-
 /// Time scale specification for precision timestamps.
 ///
 /// Recommended default: `.tai` (International Atomic Time)

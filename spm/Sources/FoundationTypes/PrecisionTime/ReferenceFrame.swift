@@ -1,4 +1,3 @@
-
 /// Spatial reference frame for precision timestamps (accounting for relativistic effects).
 ///
 /// Recommended default: `.earthCenter` (geocentric)

@@ -184,9 +184,12 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - yaw: Rotation around z-axis in radians
     public init(roll: T, pitch: T, yaw: T) where T == Float {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        var sx: T = 0, cx: T = 0
-        var sy: T = 0, cy: T = 0
-        var sz: T = 0, cz: T = 0
+        var sx: T = 0
+        var cx: T = 0
+        var sy: T = 0
+        var cy: T = 0
+        var sz: T = 0
+        var cz: T = 0
         __sincosf(halfAngles.x, &sx, &cx)
         __sincosf(halfAngles.y, &sy, &cy)
         __sincosf(halfAngles.z, &sz, &cz)
@@ -207,9 +210,12 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - yaw: Rotation around z-axis in radians
     public init(roll: T, pitch: T, yaw: T) where T == Double {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        var sx: T = 0, cx: T = 0
-        var sy: T = 0, cy: T = 0
-        var sz: T = 0, cz: T = 0
+        var sx: T = 0
+        var cx: T = 0
+        var sy: T = 0
+        var cy: T = 0
+        var sz: T = 0
+        var cz: T = 0
         __sincos(halfAngles.x, &sx, &cx)
         __sincos(halfAngles.y, &sy, &cy)
         __sincos(halfAngles.z, &sz, &cz)

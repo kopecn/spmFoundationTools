@@ -104,7 +104,7 @@ extension WaveformQuaternion {
 
 // Add this extension to constrain the CSV import to types that can be parsed from strings:
 
-extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloatingPoint  {
+extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloatingPoint {
     /// Import from CSV format
     /// - Parameters:
     ///   - url: The URL of the CSV file to load

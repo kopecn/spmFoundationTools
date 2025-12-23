@@ -448,7 +448,11 @@ struct WaveformQuaternionEquatableTests {
         let dt: Double = 0.1
 
         let waveform1 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: PrecisionTimestamp(date: .now))
-        let waveform2 = DoubleWaveformQuaternion(values: quaternions, dt: dt, t0: PrecisionTimestamp(date: .now.addingTimeInterval(1)))
+        let waveform2 = DoubleWaveformQuaternion(
+            values: quaternions,
+            dt: dt,
+            t0: PrecisionTimestamp(date: .now.addingTimeInterval(1))
+        )
 
         #expect(waveform1 != waveform2)
     }

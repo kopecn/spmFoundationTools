@@ -23,7 +23,7 @@ extension PrecisionTimestamp: Codable {
         self.timescale = timescale
         self.referenceFrame = referenceFrame
         self.uncertainty = uncertainty
-        
+
     }
 
     public func encode(to encoder: Encoder) throws {

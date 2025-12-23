@@ -56,27 +56,25 @@ extension PrecisionTimestamp: Hashable {
 extension PrecisionTimestamp: Equatable {
     @inlinable
     public static func == (lhs: PrecisionTimestamp, rhs: PrecisionTimestamp) -> Bool {
-        return lhs.storage == rhs.storage &&
-               lhs.timescale == rhs.timescale &&
-               lhs.referenceFrame == rhs.referenceFrame &&
-               lhs.uncertainty == rhs.uncertainty
+        return lhs.storage == rhs.storage && lhs.timescale == rhs.timescale && lhs.referenceFrame == rhs.referenceFrame
+            && lhs.uncertainty == rhs.uncertainty
     }
 }
 
 // // MARK: - Comparable
 // extension PrecisionTimestamp {
-    
+
 //     func compareSafely(to other: PrecisionTimestamp) -> Result<ComparisonResult, TimestampError> {
 //         // Check time scale
 //         guard timescale == other.timescale else {
 //             return .failure(.incompatibleTimeScale)
 //         }
-        
+
 //         // Check reference frame
 //         guard referenceFrame == other.referenceFrame else {
 //             return .failure(.incompatibleReferenceFrame)
 //         }
-        
+
 //         // Check uncertainty overlap
 //         let delta = storage - other.storage
 
@@ -85,7 +83,7 @@ extension PrecisionTimestamp: Equatable {
 //                 return .failure(.overlappingUncertainty)
 //             }
 //         }
-        
+
 //         // Return proper ComparisonResult
 //         if delta < 0 {
 //             return .success(.orderedAscending)

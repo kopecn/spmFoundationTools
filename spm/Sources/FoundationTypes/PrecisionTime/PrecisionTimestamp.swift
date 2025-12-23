@@ -1,6 +1,5 @@
-import simd
 import Foundation
-
+import simd
 
 /// Represents a high-precision timestamp as (seconds since epoch, attoseconds within the second),
 /// stored in a SIMD2<UInt64> vector for efficient operations.

@@ -388,7 +388,6 @@ struct PositionComputedPropertiesTests {
     }
 }
 
-
 // MARK: - Equatable Tests Suite
 @Suite("Position Equatable")
 struct PositionEquatableTests {
