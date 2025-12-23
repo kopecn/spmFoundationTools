@@ -28,7 +28,6 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/daikimat/depermaid.git", from: "1.1.0"),
-        .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
         .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
     ],
     targets: [
@@ -37,8 +36,7 @@ let package = Package(
             dependencies: [
                 "FoundationCommon",
                 "FoundationTypes",
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "OpenCombine", package: "OpenCombine")
+                .product(name: "Logging", package: "swift-log")
             ],
             path: "spm/Sources/FoundationTools"
         ),

@@ -12,7 +12,6 @@ flowchart TD
     FoundationTools-->FoundationCommon
     FoundationTools-->FoundationTypes
     FoundationTools-->Logging[[Logging]]
-    FoundationTools-->OpenCombine[[OpenCombine]]
     FoundationToolsTests{{FoundationToolsTests}}-->FoundationTools
     FoundationTypes-->kvSIMD[[kvSIMD]]
     FoundationTypesTests{{FoundationTypesTests}}-->FoundationTypes
