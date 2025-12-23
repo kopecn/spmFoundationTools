@@ -1,5 +1,5 @@
 /// Internal sign representation
-public enum NumericSign: Sendable {
+public enum NumericSign: String, Codable, Sendable, Hashable {
     case positive
     case negative
     case zero

@@ -6,7 +6,8 @@ extension PrecisionTimestamp: CustomStringConvertible, CustomDebugStringConverti
         let date = asFoundationDate
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        var result = isoFormatter.string(from: date) + " (\(seconds)s + \(attoseconds)as)"
+        let signString = sign == .negative ? "-" : ""
+        var result = isoFormatter.string(from: date) + " (\(signString)\(seconds)s + \(attoseconds)as)"
 
         if let timescale = timescale {
             result += " [\(timescale.rawValue)]"
@@ -22,7 +23,7 @@ extension PrecisionTimestamp: CustomStringConvertible, CustomDebugStringConverti
     }
 
     public var debugDescription: String {
-        var result = "PrecisionTimestamp(seconds: \(seconds), attosecondsOfSecond: \(attoseconds)"
+        var result = "PrecisionTimestamp(interval: \(interval.debugDescription)"
 
         if let timescale = timescale {
             result += ", timescale: .\(timescale)"
@@ -44,7 +45,9 @@ extension PrecisionTimestamp: CustomStringConvertible, CustomDebugStringConverti
 extension PrecisionTimestamp: Hashable {
     @inlinable
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(storage)
+        hasher.combine(interval.seconds)
+        hasher.combine(interval.attoseconds)
+        hasher.combine(interval.sign)
         hasher.combine(timescale)
         hasher.combine(referenceFrame)
         hasher.combine(uncertainty)
@@ -56,7 +59,9 @@ extension PrecisionTimestamp: Hashable {
 extension PrecisionTimestamp: Equatable {
     @inlinable
     public static func == (lhs: PrecisionTimestamp, rhs: PrecisionTimestamp) -> Bool {
-        return lhs.storage == rhs.storage && lhs.timescale == rhs.timescale && lhs.referenceFrame == rhs.referenceFrame
+        return lhs.interval == rhs.interval
+            && lhs.timescale == rhs.timescale
+            && lhs.referenceFrame == rhs.referenceFrame
             && lhs.uncertainty == rhs.uncertainty
     }
 }

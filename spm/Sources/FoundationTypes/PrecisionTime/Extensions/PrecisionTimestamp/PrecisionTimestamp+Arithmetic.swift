@@ -1,65 +1,110 @@
 import Foundation
 
 // MARK: - Arithmetic Operations
-// Plan to add:
-//      +, =+, -, =-, duration, for both lhs / rhs, with time interval
-//      TimeStamp (+/-, =+/=-) TimeInterval = TimeStamp
-//      TimeStamp - TimeStamp = TimeInterval
+// Timestamp arithmetic operations delegate to PrecisionTimeInterval for consistency.
 //
-//
-//
+// Supported operations:
+//   - Timestamp + Interval = Timestamp (advance/rewind time)
+//   - Timestamp - Interval = Timestamp (rewind/advance time)
+//   - Timestamp - Timestamp = Interval (duration between timestamps)
+//   - Compound assignments: +=, -=
 
 extension PrecisionTimestamp {
 
     // MARK: - Addition with Time Interval
 
-    /// Add a time interval to a timestamp
+    /// Add a time interval to a timestamp (move forward/backward in time)
     @inlinable
     public static func + (lhs: PrecisionTimestamp, rhs: PrecisionTimeInterval) -> PrecisionTimestamp {
-
         var result = lhs
+        result.interval = lhs.interval + rhs
+        return result
+    }
 
-        switch rhs.sign {
-        case .zero:
-            return result
-        case .positive:
-            result.storage = lhs.storage &+ rhs.storage
+    /// Add a time interval to a timestamp (move forward/backward in time)
+    @inlinable
+    public static func + (lhs: PrecisionTimeInterval, rhs: PrecisionTimestamp) -> PrecisionTimestamp {
+        rhs + lhs
+    }
 
-            // handle attosecond wrap
-            if result.attoseconds > Self.attosecondsPerSecond {
-                result.seconds = result.seconds + 1
-                result.attoseconds = result.attoseconds - Self.attosecondsPerSecond
-            }
+    /// Compound assignment addition
+    @inlinable
+    public static func += (lhs: inout PrecisionTimestamp, rhs: PrecisionTimeInterval) {
+        lhs.interval += rhs
+    }
 
-            // If we wrapped seconds return the clamped to max
-            if result.seconds < lhs.seconds {
-                result.storage = SIMD2(UInt64.max, 0)
-                return result
-            }
+    // MARK: - Subtraction
 
-            return result
+    /// Subtract a time interval from a timestamp (move backward/forward in time)
+    @inlinable
+    public static func - (lhs: PrecisionTimestamp, rhs: PrecisionTimeInterval) -> PrecisionTimestamp {
+        var result = lhs
+        result.interval = lhs.interval - rhs
+        return result
+    }
 
-        case .negative:
+    /// Compute the duration between two timestamps
+    @inlinable
+    public static func - (lhs: PrecisionTimestamp, rhs: PrecisionTimestamp) -> PrecisionTimeInterval {
+        lhs.interval - rhs.interval
+    }
 
-            // decrement seconds and bump attoseconds if attoseconds will wrap
-            if lhs.attoseconds < rhs.attoseconds {
-                result.seconds = result.seconds - 1
-                result.attoseconds = result.attoseconds + Self.attosecondsPerSecond
-            }
+    /// Compound assignment subtraction
+    @inlinable
+    public static func -= (lhs: inout PrecisionTimestamp, rhs: PrecisionTimeInterval) {
+        lhs.interval -= rhs
+    }
 
-            result.storage = lhs.storage &- rhs.storage
+    // MARK: - Wrapping Arithmetic
 
-            if result.seconds > lhs.seconds {
-                result.storage = SIMD2(0, 0)
-                return result
-            }
+    /// Wrapping addition (allows overflow without clamping)
+    @inlinable
+    public static func &+ (lhs: PrecisionTimestamp, rhs: PrecisionTimeInterval) -> PrecisionTimestamp {
+        var result = lhs
+        result.interval = lhs.interval &+ rhs
+        return result
+    }
 
-            if result.seconds <= lhs.seconds && result.attoseconds < Self.attosecondsPerSecond {
-                // Happy Path fast escape hatch
-                return result
-            }
+    /// Wrapping addition (allows overflow without clamping)
+    @inlinable
+    public static func &+ (lhs: PrecisionTimeInterval, rhs: PrecisionTimestamp) -> PrecisionTimestamp {
+        rhs &+ lhs
+    }
 
-            return result
-        }
+    /// Compound assignment wrapping addition
+    @inlinable
+    public static func &+= (lhs: inout PrecisionTimestamp, rhs: PrecisionTimeInterval) {
+        lhs.interval &+= rhs
+    }
+
+    /// Wrapping subtraction (allows overflow without clamping)
+    @inlinable
+    public static func &- (lhs: PrecisionTimestamp, rhs: PrecisionTimeInterval) -> PrecisionTimestamp {
+        var result = lhs
+        result.interval = lhs.interval &- rhs
+        return result
+    }
+
+    /// Compound assignment wrapping subtraction
+    @inlinable
+    public static func &-= (lhs: inout PrecisionTimestamp, rhs: PrecisionTimeInterval) {
+        lhs.interval &-= rhs
+    }
+
+    // MARK: - Unary Operators
+
+    /// Negate a timestamp (flip sign: after epoch ↔ before epoch)
+    /// Example: -timestamp(2025) → timestamp(1915) if epoch is 1970
+    @inlinable
+    public static prefix func - (operand: PrecisionTimestamp) -> PrecisionTimestamp {
+        var result = operand
+        result.interval = -operand.interval
+        return result
+    }
+
+    /// Unary plus (returns the timestamp unchanged)
+    @inlinable
+    public static prefix func + (operand: PrecisionTimestamp) -> PrecisionTimestamp {
+        operand
     }
 }
