@@ -36,8 +36,8 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     /// The sampled quaternion values of the waveform
     public var quaternions: [Quaternion<T>]
 
-    /// The time interval between consecutive samples in seconds
-    public var dt: T
+    /// The time interval between consecutive samples
+    public var dt: PrecisionTimeInterval
 
     /// The absolute start time of the first sample
     public var t0: PrecisionTimestamp?
@@ -46,73 +46,110 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     /// - Parameters:
     ///   - positions: The sampled position values
     ///   - quaternions: The sampled quaternion values
-    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
     /// - Note: If positions and quaternions have different counts, `isValid` will be false and `sampleCount` will return the minimum
-    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: T, t0: PrecisionTimestamp?) {
-        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
+    public init(
+        positions: [Position<T>],
+        quaternions: [Quaternion<T>],
+        dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0),
+        t0: PrecisionTimestamp? = nil
+    ) {
+        precondition(dt > .zero, "Time interval (dt) must be positive, got \(dt)")
         self.positions = positions
         self.quaternions = quaternions
         self.dt = dt
         self.t0 = t0
     }
 
-    /// Initialize with positions and quaternions only, using default dt=1.0 and t0=nil
-    public init(positions: [Position<T>], quaternions: [Quaternion<T>]) {
-        self.init(positions: positions, quaternions: quaternions, dt: 1.0, t0: nil)
+    /// Convenience initializer with dt in seconds as Double
+    /// - Parameters:
+    ///   - positions: The sampled position values
+    ///   - quaternions: The sampled quaternion values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(
+        positions: [Position<T>],
+        quaternions: [Quaternion<T>],
+        dtSeconds: Double,
+        t0: PrecisionTimestamp? = nil
+    ) {
+        self.init(positions: positions, quaternions: quaternions, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
     }
 
-    /// Initialize with positions, quaternions and dt, using default t0=nil
-    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dt: T) {
-        self.init(positions: positions, quaternions: quaternions, dt: dt, t0: nil)
+    /// Convenience initializer with dt in seconds as Float
+    /// - Parameters:
+    ///   - positions: The sampled position values
+    ///   - quaternions: The sampled quaternion values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(positions: [Position<T>], quaternions: [Quaternion<T>], dtSeconds: Float, t0: PrecisionTimestamp? = nil)
+    {
+        self.init(positions: positions, quaternions: quaternions, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
     }
 
     /// Initialize from an array of SpatialPose instances
     /// - Parameters:
     ///   - poses: Array of SpatialPose instances to convert to waveform
-    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(poses: [SpatialPose<T>], dt: T, t0: PrecisionTimestamp?) {
-        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
+    public init(poses: [SpatialPose<T>], dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0), t0: PrecisionTimestamp? = nil)
+    {
+        precondition(dt > .zero, "Time interval (dt) must be positive, got \(dt)")
         self.positions = poses.map { $0.position }
         self.quaternions = poses.map { $0.quaternion }
         self.dt = dt
         self.t0 = t0
     }
 
-    /// Initialize from an array of SpatialPose instances with default dt=1.0 and t0=nil
-    /// - Parameter poses: Array of SpatialPose instances to convert to waveform
-    public init(poses: [SpatialPose<T>]) {
-        self.init(poses: poses, dt: 1.0, t0: nil)
-    }
-
-    /// Initialize from an array of SpatialPose instances with dt, using default t0=nil
+    /// Convenience initializer from SpatialPose array with dt in seconds as Double
     /// - Parameters:
     ///   - poses: Array of SpatialPose instances to convert to waveform
-    ///   - dt: The time interval between samples in seconds (must be positive)
-    public init(poses: [SpatialPose<T>], dt: T) {
-        self.init(poses: poses, dt: dt, t0: nil)
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(poses: [SpatialPose<T>], dtSeconds: Double, t0: PrecisionTimestamp? = nil) {
+        self.init(poses: poses, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
+    }
+
+    /// Convenience initializer from SpatialPose array with dt in seconds as Float
+    /// - Parameters:
+    ///   - poses: Array of SpatialPose instances to convert to waveform
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(poses: [SpatialPose<T>], dtSeconds: Float, t0: PrecisionTimestamp? = nil) {
+        self.init(poses: poses, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
     }
 
     // MARK: - Computed Properties (Available to all pose types)
 
-    /// Get the total duration of the waveform
-    public var duration: T {
-        guard sampleCount > 1 else { return 0 }
-        return T(sampleCount - 1) * dt
+    /// Get the total duration of the waveform as a PrecisionTimeInterval
+    public var duration: PrecisionTimeInterval {
+        guard positions.count > 1 else { return .zero }
+        return dt * positions.count
     }
 
-    /// Get the sampling frequency (Hz)
-    public var samplingFrequency: T {
-        return 1.0 / dt
-    }
+    // FIXME: -- 
+    // /// Get the total duration of the waveform in seconds as the specified floating point type
+    // public func durationInSeconds<U: BinaryFloatingPoint>() -> U {
+    //     guard sampleCount > 1 else { return 0 }
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return U(sampleCount - 1) * dtSeconds
+    // }
 
-    /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: T {
-        return samplingFrequency / 2.0
-    }
+    // FIXME: -- 
+    // /// Get the sampling frequency (Hz) in the specified floating point type
+    // public func samplingFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return 1.0 / dtSeconds
+    // }
+
+    // FIXME: -- 
+    // /// Get the Nyquist frequency (Hz) in the specified floating point type
+    // public func nyquistFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     return samplingFrequencyInHz() / 2.0
+    // }
 
     /// Get the number of samples (minimum of positions and quaternions count)
     public var sampleCount: Int {
@@ -163,8 +200,8 @@ extension WaveformSpatialPose where T == Float {
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
     public var componentWaveforms:
         (
-            positions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>),
-            quaternions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
+            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
+            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
         )
     {
         let posXValues = positions.map { $0.x }
@@ -178,15 +215,15 @@ extension WaveformSpatialPose where T == Float {
 
         return (
             positions: (
-                x: Waveform1D<T, T>(values: posXValues, dt: dt, t0: t0),
-                y: Waveform1D<T, T>(values: posYValues, dt: dt, t0: t0),
-                z: Waveform1D<T, T>(values: posZValues, dt: dt, t0: t0)
+                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
             ),
             quaternions: (
-                x: Waveform1D<T, T>(values: quatXValues, dt: dt, t0: t0),
-                y: Waveform1D<T, T>(values: quatYValues, dt: dt, t0: t0),
-                z: Waveform1D<T, T>(values: quatZValues, dt: dt, t0: t0),
-                w: Waveform1D<T, T>(values: quatWValues, dt: dt, t0: t0)
+                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
             )
         )
     }
@@ -240,8 +277,8 @@ extension WaveformSpatialPose where T == Double {
     /// Extract component waveforms for positions (x, y, z) and quaternions (x, y, z, w)
     public var componentWaveforms:
         (
-            positions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>),
-            quaternions: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>, w: Waveform1D<T, T>)
+            positions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>),
+            quaternions: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>, w: Waveform1D<T>)
         )
     {
         let posXValues = positions.map { $0.x }
@@ -255,15 +292,15 @@ extension WaveformSpatialPose where T == Double {
 
         return (
             positions: (
-                x: Waveform1D<T, T>(values: posXValues, dt: dt, t0: t0),
-                y: Waveform1D<T, T>(values: posYValues, dt: dt, t0: t0),
-                z: Waveform1D<T, T>(values: posZValues, dt: dt, t0: t0)
+                x: Waveform1D<T>(values: posXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: posYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: posZValues, dt: dt, t0: t0)
             ),
             quaternions: (
-                x: Waveform1D<T, T>(values: quatXValues, dt: dt, t0: t0),
-                y: Waveform1D<T, T>(values: quatYValues, dt: dt, t0: t0),
-                z: Waveform1D<T, T>(values: quatZValues, dt: dt, t0: t0),
-                w: Waveform1D<T, T>(values: quatWValues, dt: dt, t0: t0)
+                x: Waveform1D<T>(values: quatXValues, dt: dt, t0: t0),
+                y: Waveform1D<T>(values: quatYValues, dt: dt, t0: t0),
+                z: Waveform1D<T>(values: quatZValues, dt: dt, t0: t0),
+                w: Waveform1D<T>(values: quatWValues, dt: dt, t0: t0)
             )
         )
     }
@@ -292,20 +329,8 @@ extension WaveformSpatialPose {
             return nil
         }
 
-        // Compare dt with relative tolerance
-        let dtEqual: Bool
-        if positionWaveform.dt == 0 && quaternionWaveform.dt == 0 {
-            dtEqual = true
-        } else if positionWaveform.dt == 0 || quaternionWaveform.dt == 0 {
-            dtEqual = abs(positionWaveform.dt - quaternionWaveform.dt) < 1e-10
-        } else {
-            let relativeDifference =
-                abs(positionWaveform.dt - quaternionWaveform.dt)
-                / max(abs(positionWaveform.dt), abs(quaternionWaveform.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
-
-        guard dtEqual && positionWaveform.t0 == quaternionWaveform.t0 else {
+        // Compare dt (PrecisionTimeInterval has exact equality) and t0
+        guard positionWaveform.dt == quaternionWaveform.dt && positionWaveform.t0 == quaternionWaveform.t0 else {
             return nil
         }
 
@@ -321,25 +346,16 @@ extension WaveformSpatialPose {
 // MARK: - Equatable
 extension WaveformSpatialPose: Equatable {
     public static func == (lhs: WaveformSpatialPose<T>, rhs: WaveformSpatialPose<T>) -> Bool {
-        // Compare positions and quaternions arrays
-        guard lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions else { return false }
-
-        // Compare dt
-        // Use relative tolerance for better handling of different magnitudes
-        let dtEqual: Bool
-        if lhs.dt == 0 && rhs.dt == 0 {
-            dtEqual = true
-        } else if lhs.dt == 0 || rhs.dt == 0 {
-            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
-        } else {
-            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
+        // Compare dt first (PrecisionTimeInterval has exact equality)
+        guard lhs.dt == rhs.dt else { return false }
 
         // Compare t0
         guard lhs.t0 == rhs.t0 else { return false }
 
-        return dtEqual
+        // Compare positions and quaternions arrays
+        guard lhs.positions == rhs.positions && lhs.quaternions == rhs.quaternions else { return false }
+
+        return true
     }
 }
 
@@ -356,11 +372,11 @@ extension WaveformSpatialPose: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible
 extension WaveformSpatialPose: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "WaveformSpatialPose(samples: \(sampleCount), dt: \(dt), duration: \(duration)s)"
+        return "WaveformSpatialPose(samples: \(sampleCount), dt: \(dt), duration: \(duration))"
     }
 
     public var debugDescription: String {
         return
-            "WaveformSpatialPose<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
+            "WaveformSpatialPose<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration))"
     }
 }

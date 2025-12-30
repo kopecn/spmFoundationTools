@@ -15,11 +15,11 @@ extension WaveformSpatialPose: Codable where T: BinaryFloatingPoint {
 
         positions = try container.decode([Position<T>].self, forKey: .positions)
         quaternions = try container.decode([Quaternion<T>].self, forKey: .quaternions)
-        dt = try container.decode(T.self, forKey: .dt)
+        dt = try container.decode(PrecisionTimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(PrecisionTimestamp.self, forKey: .t0)
 
         // Validate dt is positive
-        guard dt > 0 else {
+        guard dt > .zero else {
             throw WaveformCodingError.invalidFileFormat
         }
 
@@ -96,15 +96,24 @@ extension WaveformSpatialPose where T: BinaryFloatingPoint {
     /// Export to CSV format with pose components as columns
     /// - Parameter url: The URL where the CSV file should be saved
     /// - Throws: File writing errors
-    public func exportToCSV(to url: URL) throws {
-        var csvContent = "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w\n"
+    public func exportToCSV(
+            to url: URL,
+            fullPrecision: Bool = false
+        ) throws {
+        var csvContent = fullPrecision ? "seconds,attoseconds,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w\n" : "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w\n"
 
         for index in 0..<sampleCount {
+            let time: PrecisionTimeInterval = dt * index + (t0?.interval ?? .zero)
             let position = positions[index]
             let quaternion = quaternions[index]
-            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
-            csvContent +=
-                "\(time),\(position.x),\(position.y),\(position.z),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+
+            if fullPrecision {
+                csvContent +=
+                    "\(time.descriptionSeconds),\(time.attoseconds),\(position.x),\(position.y),\(position.z),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            } else {
+                csvContent +=
+                    "\(time),\(position.x),\(position.y),\(position.z),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            }
         }
 
         try csvContent.write(to: url, atomically: true, encoding: .utf8)
@@ -120,6 +129,7 @@ extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatin
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
     /// - Returns: A WaveformSpatialPose created from the CSV data
     /// - Throws: File reading errors or parsing errors
+    // FIXME: - need to add handling for reading the header, and determining if fullPrecision then handle accordingly
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
@@ -176,7 +186,8 @@ extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatin
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
+        let dtSeconds = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
+        let dt = PrecisionTimeInterval(seconds: dtSeconds)
         let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformSpatialPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)

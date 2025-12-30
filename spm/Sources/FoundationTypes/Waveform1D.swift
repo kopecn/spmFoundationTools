@@ -1,10 +1,9 @@
 import Foundation
 
 // Convenience typealiases for common use cases
-public typealias DoubleWaveform1D = Waveform1D<Double, Double>
-public typealias FloatWaveform1D = Waveform1D<Float, Float>
-public typealias IntDWaveform1D = Waveform1D<Int, Double>
-public typealias IntFWaveform1D = Waveform1D<Int, Float>
+public typealias DoubleWaveform1D = Waveform1D<Double>
+public typealias FloatWaveform1D = Waveform1D<Float>
+public typealias IntWaveform1D = Waveform1D<Int>
 
 /// A one-dimensional waveform data structure representing time-series data.
 ///
@@ -24,12 +23,12 @@ public typealias IntFWaveform1D = Waveform1D<Int, Float>
 /// // Float waveform
 /// var floatWaveform = Waveform1D<Float>(values: [1.0, 2.0, 3.0])
 /// ```
-public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendable & SIMDScalar>: Sendable {
+public struct Waveform1D<T: Numeric & Sendable>: Sendable {
     /// The sampled data values of the waveform
     public var values: [T]
 
-    /// The time interval between consecutive samples in seconds
-    public var dt: U
+    /// The time interval between consecutive samples
+    public var dt: PrecisionTimeInterval
 
     /// The absolute start time of the first sample
     public var t0: PrecisionTimestamp?
@@ -37,33 +36,69 @@ public struct Waveform1D<T: Numeric & Sendable, U: BinaryFloatingPoint & Sendabl
     /// Initialize a waveform
     /// - Parameters:
     ///   - values: The sampled data values
-    ///   - dt: The time interval between samples in seconds (must be positive, defaults to 1.0)
+    ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample (optional)
     /// - Precondition: dt must be greater than 0
-    public init(values: [T], dt: U = 1.0, t0: PrecisionTimestamp? = nil) {
-        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
+    public init(
+        values: [T],
+        dt: PrecisionTimeInterval = .oneSecond,
+        t0: PrecisionTimestamp? = nil
+    ) {
         self.values = values
         self.dt = dt
         self.t0 = t0
     }
 
+    /// Convenience initializer with dt in seconds as Double
+    /// - Parameters:
+    ///   - values: The sampled data values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(values: [T], dtSeconds: Double, t0: PrecisionTimestamp? = nil) {
+        self.init(
+            values: values, 
+            dt: PrecisionTimeInterval(seconds: dtSeconds),
+            t0: t0
+        )
+    }
+
+    /// Convenience initializer with dt in seconds as Float
+    /// - Parameters:
+    ///   - values: The sampled data values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(values: [T], dtSeconds: Float, t0: PrecisionTimestamp? = nil) {
+        self.init(values: values, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
+    }
+
     // MARK: - Computed Properties
 
-    /// Get the total duration of the waveform
-    public var duration: U {
-        guard values.count > 1 else { return 0 }
-        return U(values.count - 1) * dt
+    /// Get the total duration of the waveform as a PrecisionTimeInterval
+    public var duration: PrecisionTimeInterval {
+        guard values.count > 1 else { return .zero }
+        return dt * values.count
     }
 
-    /// Get the sampling frequency (Hz)
-    public var samplingFrequency: U {
-        return 1.0 / dt
-    }
+    // FIXME: -- 
+    // /// Get the total duration of the waveform in seconds as the specified floating point type
+    // public func durationInSeconds<U: BinaryFloatingPoint>() -> U {
+    //     guard values.count > 1 else { return 0 }
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return U(values.count - 1) * dtSeconds
+    // }
 
-    /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: U {
-        return samplingFrequency / 2.0
-    }
+    // FIXME: -- 
+    // /// Get the sampling frequency (Hz) in the specified floating point type
+    // public func samplingFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return 1.0 / dtSeconds
+    // }
+
+    // FIXME: -- 
+    // /// Get the Nyquist frequency (Hz) in the specified floating point type
+    // public func nyquistFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     return samplingFrequencyInHz() / 2.0
+    // }
 
     /// Get the number of samples
     public var sampleCount: Int {
@@ -161,26 +196,17 @@ extension Waveform1D where T: SignedInteger {
 
 // MARK: - Equatable
 extension Waveform1D: Equatable {
-    public static func == (lhs: Waveform1D<T, U>, rhs: Waveform1D<T, U>) -> Bool {
+    public static func == (lhs: Waveform1D<T>, rhs: Waveform1D<T>) -> Bool {
         // Compare values array
         guard lhs.values == rhs.values else { return false }
 
-        // Compare dt
-        // Use relative tolerance for better handling of different magnitudes
-        let dtEqual: Bool
-        if lhs.dt == 0 && rhs.dt == 0 {
-            dtEqual = true
-        } else if lhs.dt == 0 || rhs.dt == 0 {
-            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
-        } else {
-            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
+        // Compare dt (PrecisionTimeInterval has exact equality)
+        guard lhs.dt == rhs.dt else { return false }
 
         // Compare t0
         guard lhs.t0 == rhs.t0 else { return false }
 
-        return dtEqual
+        return true
     }
 }
 
@@ -196,11 +222,11 @@ extension Waveform1D: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible
 extension Waveform1D: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "Waveform1D(samples: \(values.count), dt: \(dt), duration: \(duration)s)"
+        return "Waveform1D(samples: \(values.count), dt: \(dt), duration: \(duration))"
     }
 
     public var debugDescription: String {
         return
-            "Waveform1D<\(T.self)>(samples: \(values.count), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
+            "Waveform1D<\(T.self)>(samples: \(values.count), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration))"
     }
 }

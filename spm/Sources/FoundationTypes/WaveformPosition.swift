@@ -28,8 +28,8 @@ public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: 
     /// The sampled position values of the waveform
     public var values: [Position<T>]
 
-    /// The time interval between consecutive samples in seconds
-    public var dt: T
+    /// The time interval between consecutive samples
+    public var dt: PrecisionTimeInterval
 
     /// The absolute start time of the first sample
     public var t0: PrecisionTimestamp?
@@ -37,43 +37,62 @@ public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: 
     /// Initialize a position waveform
     /// - Parameters:
     ///   - values: The sampled position values
-    ///   - dt: The time interval between samples in seconds (must be positive)
+    ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(values: [Position<T>], dt: T, t0: PrecisionTimestamp?) {
-        precondition(dt > 0, "Time interval (dt) must be positive, got \(dt)")
+    public init(values: [Position<T>], dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0), t0: PrecisionTimestamp? = nil) {
+        precondition(dt > .zero, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt
         self.t0 = t0
     }
 
-    /// Initialize with values only, using default dt=1.0 and t0=nil
-    public init(values: [Position<T>]) {
-        self.init(values: values, dt: 1.0, t0: nil)
+    /// Convenience initializer with dt in seconds as Double
+    /// - Parameters:
+    ///   - values: The sampled position values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(values: [Position<T>], dtSeconds: Double, t0: PrecisionTimestamp? = nil) {
+        self.init(values: values, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
     }
 
-    /// Initialize with values and dt, using default t0=nil
-    public init(values: [Position<T>], dt: T) {
-        self.init(values: values, dt: dt, t0: nil)
+    /// Convenience initializer with dt in seconds as Float
+    /// - Parameters:
+    ///   - values: The sampled position values
+    ///   - dtSeconds: The time interval between samples in seconds (must be positive)
+    ///   - t0: The absolute start time of the first sample (optional)
+    public init(values: [Position<T>], dtSeconds: Float, t0: PrecisionTimestamp? = nil) {
+        self.init(values: values, dt: PrecisionTimeInterval(seconds: dtSeconds), t0: t0)
     }
 
     // MARK: - Computed Properties (Available to all position types)
 
-    /// Get the total duration of the waveform
-    public var duration: T {
-        guard values.count > 1 else { return 0 }
-        return T(values.count - 1) * dt
+    /// Get the total duration of the waveform as a PrecisionTimeInterval
+    public var duration: PrecisionTimeInterval {
+        guard values.count > 1 else { return .zero }
+        return dt * values.count
     }
 
-    /// Get the sampling frequency (Hz)
-    public var samplingFrequency: T {
-        return 1.0 / dt
-    }
+    // FIXME: -- 
+    // /// Get the total duration of the waveform in seconds as the specified floating point type
+    // public func durationInSeconds<U: BinaryFloatingPoint>() -> U {
+    //     guard values.count > 1 else { return 0 }
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return U(values.count - 1) * dtSeconds
+    // }
 
-    /// Get the Nyquist frequency (Hz)
-    public var nyquistFrequency: T {
-        return samplingFrequency / 2.0
-    }
+    // FIXME: -- 
+    // /// Get the sampling frequency (Hz) in the specified floating point type
+    // public func samplingFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     let dtSeconds: U = dt.asFloatingPoint()
+    //     return 1.0 / dtSeconds
+    // }
+
+    // FIXME: -- 
+    // /// Get the Nyquist frequency (Hz) in the specified floating point type
+    // public func nyquistFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+    //     return samplingFrequencyInHz() / 2.0
+    // }
 
     /// Get the number of samples
     public var sampleCount: Int {
@@ -103,15 +122,15 @@ extension WaveformPosition where T == Float {
     }
 
     /// Extract component waveforms (x, y, z)
-    public var componentWaveforms: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>) {
+    public var componentWaveforms: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>) {
         let xValues = values.map { $0.x }
         let yValues = values.map { $0.y }
         let zValues = values.map { $0.z }
 
         return (
-            x: Waveform1D<T, T>(values: xValues, dt: dt, t0: t0),
-            y: Waveform1D<T, T>(values: yValues, dt: dt, t0: t0),
-            z: Waveform1D<T, T>(values: zValues, dt: dt, t0: t0)
+            x: Waveform1D<T>(values: xValues, dt: dt, t0: t0),
+            y: Waveform1D<T>(values: yValues, dt: dt, t0: t0),
+            z: Waveform1D<T>(values: zValues, dt: dt, t0: t0)
         )
     }
 }
@@ -138,15 +157,15 @@ extension WaveformPosition where T == Double {
     }
 
     /// Extract component waveforms (x, y, z)
-    public var componentWaveforms: (x: Waveform1D<T, T>, y: Waveform1D<T, T>, z: Waveform1D<T, T>) {
+    public var componentWaveforms: (x: Waveform1D<T>, y: Waveform1D<T>, z: Waveform1D<T>) {
         let xValues = values.map { $0.x }
         let yValues = values.map { $0.y }
         let zValues = values.map { $0.z }
 
         return (
-            x: Waveform1D<T, T>(values: xValues, dt: dt, t0: t0),
-            y: Waveform1D<T, T>(values: yValues, dt: dt, t0: t0),
-            z: Waveform1D<T, T>(values: zValues, dt: dt, t0: t0)
+            x: Waveform1D<T>(values: xValues, dt: dt, t0: t0),
+            y: Waveform1D<T>(values: yValues, dt: dt, t0: t0),
+            z: Waveform1D<T>(values: zValues, dt: dt, t0: t0)
         )
     }
 }
@@ -156,27 +175,17 @@ extension WaveformPosition {
 
     /// Create a waveform from component waveforms
     public static func from(
-        x: Waveform1D<T, T>,
-        y: Waveform1D<T, T>,
-        z: Waveform1D<T, T>
+        x: Waveform1D<T>,
+        y: Waveform1D<T>,
+        z: Waveform1D<T>
     ) -> WaveformPosition<T>? {
         // Check sample counts match
         guard x.values.count == y.values.count && y.values.count == z.values.count else {
             return nil
         }
 
-        // Compare dt values with relative tolerance
-        let dtEqual: Bool
-        if x.dt == 0 && y.dt == 0 && z.dt == 0 {
-            dtEqual = true
-        } else {
-            let maxDt = max(x.dt, y.dt, z.dt)
-            let relativeDiffXY = abs(x.dt - y.dt) / maxDt
-            let relativeDiffYZ = abs(y.dt - z.dt) / maxDt
-            dtEqual = relativeDiffXY < 1e-10 && relativeDiffYZ < 1e-10
-        }
-
-        guard dtEqual else {
+        // Compare dt values (PrecisionTimeInterval has exact equality)
+        guard x.dt == y.dt && y.dt == z.dt else {
             return nil
         }
 
@@ -198,22 +207,13 @@ extension WaveformPosition: Equatable {
         // Compare values array
         guard lhs.values == rhs.values else { return false }
 
-        // Compare dt
-        // Use relative tolerance for better handling of different magnitudes
-        let dtEqual: Bool
-        if lhs.dt == 0 && rhs.dt == 0 {
-            dtEqual = true
-        } else if lhs.dt == 0 || rhs.dt == 0 {
-            dtEqual = abs(lhs.dt - rhs.dt) < 1e-10
-        } else {
-            let relativeDifference = abs(lhs.dt - rhs.dt) / max(abs(lhs.dt), abs(rhs.dt))
-            dtEqual = relativeDifference < 1e-10
-        }
+        // Compare dt (PrecisionTimeInterval has exact equality)
+        guard lhs.dt == rhs.dt else { return false }
 
         // Compare t0
         guard lhs.t0 == rhs.t0 else { return false }
 
-        return dtEqual
+        return true
     }
 }
 
@@ -229,11 +229,11 @@ extension WaveformPosition: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible
 extension WaveformPosition: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "WaveformPosition(samples: \(sampleCount), dt: \(dt), duration: \(duration)s)"
+        return "WaveformPosition(samples: \(sampleCount), dt: \(dt), duration: \(duration))"
     }
 
     public var debugDescription: String {
         return
-            "WaveformPosition<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration)s)"
+            "WaveformPosition<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration))"
     }
 }
