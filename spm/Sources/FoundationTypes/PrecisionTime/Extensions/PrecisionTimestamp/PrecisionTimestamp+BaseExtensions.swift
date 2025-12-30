@@ -65,36 +65,3 @@ extension PrecisionTimestamp: Equatable {
             && lhs.uncertainty == rhs.uncertainty
     }
 }
-
-// // MARK: - Comparable
-// extension PrecisionTimestamp {
-
-//     func compareSafely(to other: PrecisionTimestamp) -> Result<ComparisonResult, TimestampError> {
-//         // Check time scale
-//         guard timescale == other.timescale else {
-//             return .failure(.incompatibleTimeScale)
-//         }
-
-//         // Check reference frame
-//         guard referenceFrame == other.referenceFrame else {
-//             return .failure(.incompatibleReferenceFrame)
-//         }
-
-//         // Check uncertainty overlap
-//         let delta = storage - other.storage
-
-//         if let combinedUncertainty = uncertainty + other.uncertainty {
-//             if abs(delta) <= combinedUncertainty {
-//                 return .failure(.overlappingUncertainty)
-//             }
-//         }
-
-//         // Return proper ComparisonResult
-//         if delta < 0 {
-//             return .success(.orderedAscending)
-//         } else {
-//             return .success(.orderedDescending)
-//         }
-//     }
-
-// }

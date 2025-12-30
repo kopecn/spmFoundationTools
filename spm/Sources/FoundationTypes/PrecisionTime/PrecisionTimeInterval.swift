@@ -7,6 +7,24 @@ public struct PrecisionTimeInterval: Sendable {
     public var storage: SIMD2<UInt64>
     public var sign: NumericSign
 
+    // MARK: - Calibration Metadata
+
+    /// Frequency offset or systematic drift - deterministic deviation from nominal frequency
+    /// that accumulates linearly over time
+    public var frequencyOffset: FrequencyOffset?
+
+    /// Phase noise or short-term jitter - fast, random fluctuations in clock phase/edge timing
+    /// (high-frequency deviations around ideal clock edge)
+    public var phaseJitter: PhaseJitter?
+
+    /// Long-term wander or random walk - slow, stochastic variations in clock phase
+    /// that grow roughly as √t instead of linearly
+    public var wander: Wander?
+
+    /// Temperature or environmental drift - systematic frequency/phase changes from
+    /// environmental factors (requires external temperature waveform correlation)
+    public var temperatureDrift: TemperatureDrift?
+
     // MARK: - Constants
 
     /// Number of attoseconds in one second (1e18).
@@ -93,6 +111,110 @@ public struct PrecisionTimeInterval: Sendable {
         self.storage = SIMD2(0,0)
         self.sign = .zero
         Self.binaryIntegerPointToSimd(seconds, &self.storage, &self.sign)
+    }
+
+    // MARK: - String-based Initializers (Lossless)
+
+    /// Initialize from string representations of whole seconds and attoseconds
+    /// - Parameters:
+    ///   - secondsString: String representing whole seconds (can include '-' for negative)
+    ///   - attosecondsString: String representing attoseconds as UInt64
+    ///
+    /// Example:
+    /// ```swift
+    /// let interval = PrecisionTimeInterval(secondsString: "123", attosecondsString: "456789012345678901")
+    /// // Creates: 123 seconds + 456789012345678901 attoseconds
+    ///
+    /// let negative = PrecisionTimeInterval(secondsString: "-123", attosecondsString: "456")
+    /// // Creates: -123 seconds - 456 attoseconds
+    /// ```
+    public init?(secondsString: String, attosecondsString: String) {
+        // Parse sign from seconds string
+        var secondsStr = secondsString.trimmingCharacters(in: .whitespaces)
+        let isNegative = secondsStr.hasPrefix("-")
+        if isNegative {
+            secondsStr.removeFirst()
+        }
+
+        // Parse seconds
+        guard let secondsValue = UInt64(secondsStr) else {
+            return nil
+        }
+
+        // Parse attoseconds
+        let attosecondsStr = attosecondsString.trimmingCharacters(in: .whitespaces)
+        guard let attosecondsValue = UInt64(attosecondsStr) else {
+            return nil
+        }
+
+        // Create interval
+        let sign: NumericSign = (secondsValue == 0 && attosecondsValue == 0) ? .zero : (isNegative ? .negative : .positive)
+        self.init(seconds: secondsValue, attoseconds: attosecondsValue, sign: sign)
+    }
+
+    /// Initialize from string representations of whole seconds and fractional seconds
+    /// - Parameters:
+    ///   - secondsString: String representing whole seconds (can include '-' for negative)
+    ///   - fractionalString: String representing fractional part (interpreted as decimal fraction)
+    ///
+    /// The fractional string is interpreted as digits after the decimal point and converted to attoseconds.
+    /// For maximum precision, the fractional string can have up to 18 digits (attosecond precision).
+    /// Shorter strings are right-padded with zeros.
+    ///
+    /// Example:
+    /// ```swift
+    /// let interval1 = PrecisionTimeInterval(secondsString: "123", fractionalString: "5")
+    /// // Creates: 123.5 seconds = 123 seconds + 500000000000000000 attoseconds
+    ///
+    /// let interval2 = PrecisionTimeInterval(secondsString: "-10", fractionalString: "123456789012345678")
+    /// // Creates: -10.123456789012345678 seconds
+    ///
+    /// let interval3 = PrecisionTimeInterval(secondsString: "0", fractionalString: "000000000000000001")
+    /// // Creates: 0.000000000000000001 seconds = 1 attosecond
+    /// ```
+    public init?(secondsString: String, fractionalString: String) {
+        // Parse sign from seconds string
+        var secondsStr = secondsString.trimmingCharacters(in: .whitespaces)
+        let isNegative = secondsStr.hasPrefix("-")
+        if isNegative {
+            secondsStr.removeFirst()
+        }
+
+        // Parse seconds
+        guard let secondsValue = UInt64(secondsStr) else {
+            return nil
+        }
+
+        // Parse fractional part and convert to attoseconds
+        var fractionalStr = fractionalString.trimmingCharacters(in: .whitespaces)
+
+        // Validate that fractional string contains only digits
+        guard fractionalStr.allSatisfy({ $0.isNumber }) else {
+            return nil
+        }
+
+        // Truncate if longer than 18 digits (attosecond precision)
+        if fractionalStr.count > 18 {
+            fractionalStr = String(fractionalStr.prefix(18))
+        }
+
+        // Pad with zeros on the right to make it 18 digits
+        // "5" -> "500000000000000000" (0.5 seconds)
+        // "123" -> "123000000000000000" (0.123 seconds)
+        let paddedFractional = fractionalStr.padding(
+            toLength: 18,
+            withPad: "0",
+            startingAt: 0
+        )
+
+        // Convert to UInt64 attoseconds
+        guard let attosecondsValue = UInt64(paddedFractional) else {
+            return nil
+        }
+
+        // Create interval
+        let sign: NumericSign = (secondsValue == 0 && attosecondsValue == 0) ? .zero : (isNegative ? .negative : .positive)
+        self.init(seconds: secondsValue, attoseconds: attosecondsValue, sign: sign)
     }
 
     // MARK: - Accessors

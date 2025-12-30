@@ -3,7 +3,7 @@ import Foundation
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 extension PrecisionTimeInterval: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        let signString = sign == .negative ? "-" : "+"
+        let signString = sign == .negative ? "-" : ""
 
         if attoseconds == 0 {
             return "\(signString)\(seconds)s"
@@ -15,13 +15,22 @@ extension PrecisionTimeInterval: CustomStringConvertible, CustomDebugStringConve
         // Trim trailing zeros for readability
         let trimmed = fractionalString.trimmingCharacters(in: CharacterSet(charactersIn: "0"))
 
-        return "\(signString)\(seconds).\(trimmed)s"
+        return "\(signString)\(seconds).\(trimmed)"
     }
 
     public var debugDescription: String {
         "PrecisionTimeInterval(seconds: \(seconds), attoseconds: \(attoseconds), sign: .\(sign))"
     }
 
+    public var descriptionAttoseconds: String {
+        guard attoseconds != 0 else { return "0"}
+        return "\(attoseconds)"
+    }
+
+    public var descriptionSeconds: String {
+        let signString = sign == .negative ? "-" : ""
+        return "\(signString)\(seconds)s"
+    }
 }
 
 // MARK: - Hashable
