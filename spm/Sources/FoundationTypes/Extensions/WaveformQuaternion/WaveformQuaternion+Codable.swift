@@ -13,11 +13,11 @@ extension WaveformQuaternion: Codable where T: BinaryFloatingPoint {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         values = try container.decode([Quaternion<T>].self, forKey: .values)
-        dt = try container.decode(T.self, forKey: .dt)
+        dt = try container.decode(PrecisionTimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(PrecisionTimestamp.self, forKey: .t0)
 
         // Validate dt is positive
-        guard dt > 0 else {
+        guard dt > .zero else {
             throw WaveformCodingError.invalidFileFormat
         }
     }
@@ -90,12 +90,19 @@ extension WaveformQuaternion {
     /// Export to CSV format with quaternion components as columns
     /// - Parameter url: The URL where the CSV file should be saved
     /// - Throws: File writing errors
-    public func exportToCSV(to url: URL) throws {
-        var csvContent = "timestamp,x,y,z,w\n"
+    public func exportToCSV(
+        to url: URL,
+        fullPrecision: Bool = false
+    ) throws {
+        var csvContent = fullPrecision ? "seconds,attoseconds,x,y,z,w\n" : "timestamp,x,y,z,w\n"
 
         for (index, quaternion) in values.enumerated() {
-            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
-            csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            let time: PrecisionTimeInterval = dt * index + (t0?.interval ?? .zero)
+            if fullPrecision {
+                csvContent += "\(time.descriptionSeconds),\(time.attoseconds),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            } else {
+                csvContent += "\(time),\(quaternion.x),\(quaternion.y),\(quaternion.z),\(quaternion.w)\n"
+            }
         }
 
         try csvContent.write(to: url, atomically: true, encoding: .utf8)
@@ -111,6 +118,7 @@ extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloating
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
     /// - Returns: A WaveformQuaternion created from the CSV data
     /// - Throws: File reading errors or parsing errors
+    // FIXME: - need to add handling for reading the header, and determining if fullPrecision then handle accordingly
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
@@ -156,10 +164,11 @@ extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloating
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dt = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
+        let dtSeconds = Double(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
+        let dt = PrecisionTimeInterval(seconds: dtSeconds)
         let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
-        return WaveformQuaternion<T>(values: quaternions, dt: dt, t0: t0)
+        return WaveformQuaternion<T>(values: quaternions, dtSeconds: dtSeconds, t0: t0)
     }
 }
 

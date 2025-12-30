@@ -13,11 +13,11 @@ extension WaveformPosition: Codable where T: BinaryFloatingPoint {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         values = try container.decode([Position<T>].self, forKey: .values)
-        dt = try container.decode(T.self, forKey: .dt)
+        dt = try container.decode(PrecisionTimeInterval.self, forKey: .dt)
         t0 = try container.decodeIfPresent(PrecisionTimestamp.self, forKey: .t0)
 
         // Validate dt is positive
-        guard dt > 0 else {
+        guard dt > .zero else {
             throw WaveformCodingError.invalidFileFormat
         }
     }
@@ -90,12 +90,19 @@ extension WaveformPosition {
     /// Export to CSV format with position components as columns
     /// - Parameter url: The URL where the CSV file should be saved
     /// - Throws: File writing errors
-    public func exportToCSV(to url: URL) throws {
-        var csvContent = "timestamp,x,y,z\n"
+    public func exportToCSV(
+        to url: URL,
+        fullPrecision: Bool = false
+    ) throws {
+        var csvContent = fullPrecision ? "seconds,attoseconds,x,y,z\n" : "timestamp,x,y,z\n"
 
         for (index, position) in values.enumerated() {
-            let time = Double(t0?.seconds ?? 0) + Double(index) * Double(dt)
-            csvContent += "\(time),\(position.x),\(position.y),\(position.z)\n"
+            let time: PrecisionTimeInterval = dt * index + (t0?.interval ?? .zero)
+            if fullPrecision {
+                csvContent += "\(time.descriptionSeconds),\(time.attoseconds),\(position.x),\(position.y),\(position.z)\n"
+            } else {
+                csvContent += "\(time),\(position.x),\(position.y),\(position.z)\n"
+            }
         }
 
         try csvContent.write(to: url, atomically: true, encoding: .utf8)
@@ -111,6 +118,7 @@ extension WaveformPosition where T: LosslessStringConvertible & BinaryFloatingPo
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
     /// - Returns: A WaveformPosition created from the CSV data
     /// - Throws: File reading errors or parsing errors
+    // FIXME: - need to add handling for reading the header, and determining if fullPrecision then handle accordingly
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
@@ -155,7 +163,8 @@ extension WaveformPosition where T: LosslessStringConvertible & BinaryFloatingPo
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dt = T(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
+        let dtSeconds = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
+        let dt = PrecisionTimeInterval(seconds: dtSeconds)
         let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformPosition<T>(values: positions, dt: dt, t0: t0)

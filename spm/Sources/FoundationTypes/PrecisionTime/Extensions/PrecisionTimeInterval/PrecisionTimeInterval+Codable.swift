@@ -17,7 +17,7 @@ extension PrecisionTimeInterval: Codable {
 
         self.storage = SIMD2(seconds, attoseconds)
         self.sign = sign
-
+        Self.normalize(&self.storage, &self.sign)
     }
 
     public func encode(to encoder: Encoder) throws {
