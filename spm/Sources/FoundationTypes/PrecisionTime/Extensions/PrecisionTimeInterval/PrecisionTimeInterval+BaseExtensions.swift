@@ -12,10 +12,12 @@ extension PrecisionTimeInterval: CustomStringConvertible, CustomDebugStringConve
         // Format attoseconds as 18-digit fractional part
         let fractionalString = String(format: "%018llu", attoseconds)
 
-        // Trim trailing zeros for readability
-        let trimmed = fractionalString.trimmingCharacters(in: CharacterSet(charactersIn: "0"))
+        let combinedString = ".\(fractionalString)"
 
-        return "\(signString)\(seconds).\(trimmed)"
+        // Trim trailing zeros for readability
+        let trimmed = combinedString.trimmingCharacters(in: CharacterSet(charactersIn: "0"))
+
+        return "\(signString)\(seconds)\(trimmed)"
     }
 
     public var debugDescription: String {

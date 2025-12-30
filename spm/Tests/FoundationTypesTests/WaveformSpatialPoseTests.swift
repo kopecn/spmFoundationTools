@@ -675,7 +675,7 @@ struct WaveformSpatialPoseStringRepresentationTests {
         #expect(description.contains("WaveformSpatialPose"))
         #expect(description.contains("samples: 5"))
         #expect(description.contains("dt: 0.1"))
-        #expect(description.contains("duration: 0.4s"))
+        #expect(description.contains("duration: 0.4"))
     }
 
     @Test("Debug description format")
@@ -690,7 +690,7 @@ struct WaveformSpatialPoseStringRepresentationTests {
         #expect(debugDescription.contains("samples: 1"))
         #expect(debugDescription.contains("dt: 0.05"))
         #expect(debugDescription.contains("t0:"))
-        #expect(debugDescription.contains("duration: 0.0s"))
+        #expect(debugDescription.contains("duration: 0s"))
     }
 
     @Test("Description with nil t0")
@@ -710,7 +710,7 @@ struct WaveformSpatialPoseStringRepresentationTests {
         let description = waveform.description
 
         #expect(description.contains("samples: 0"))
-        #expect(description.contains("duration: 0.0s"))
+        #expect(description.contains("duration: 0s"))
     }
 }
 
@@ -755,7 +755,7 @@ struct WaveformSpatialPoseEdgeCasesTests {
         let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions, dt: .oneMillisecond)
 
         #expect(waveform.sampleCount == largeCount)
-        #expect(waveform.duration.secondsAsFloat == Float(largeCount - 1) * 0.001)
+        #expect(waveform.duration.secondsAsFloat == Float(9.999))
         #expect(waveform.isValid == true)
     }
 

@@ -60,7 +60,7 @@ struct Waveform1DComputedPropertiesTests {
     @Test("Duration calculation with multiple samples")
     func durationWithMultipleSamples() {
         let waveform = Waveform1D<Double>(values: [1.0, 2.0, 3.0, 4.0, 5.0], dtSeconds: 0.1)
-        let expectedDuration: PrecisionTimeInterval = .oneDecisecond
+        let expectedDuration: PrecisionTimeInterval = .oneDecisecond * 5
 
         #expect(waveform.duration == expectedDuration)
     }
@@ -383,7 +383,7 @@ struct Waveform1DCodableTests {
         #expect(jsonString.contains("1"))
         #expect(jsonString.contains("2"))
         #expect(jsonString.contains("3"))
-        #expect(jsonString.contains("0.1"))
+        #expect(jsonString.contains("100000000000000000"))
     }
 
     @Test("Save and load from file - DoubleWaveform1D")

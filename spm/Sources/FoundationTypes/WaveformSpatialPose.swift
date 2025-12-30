@@ -127,7 +127,7 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     /// Get the total duration of the waveform as a PrecisionTimeInterval
     public var duration: PrecisionTimeInterval {
         guard positions.count > 1 else { return .zero }
-        return dt * positions.count
+        return dt * (positions.count - 1)
     }
 
     // FIXME: -- 
