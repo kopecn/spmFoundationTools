@@ -16,4 +16,14 @@ public enum NumericSign: String, Codable, Sendable, Hashable {
             self = .zero
         }
     }
+
+    /// Returns the inverted sign (positive becomes negative, negative becomes positive, zero remains zero)
+    @inlinable
+    public var inverted: NumericSign {
+        switch self {
+        case .positive: return .negative
+        case .negative: return .positive
+        case .zero: return .zero
+        }
+    }
 }
