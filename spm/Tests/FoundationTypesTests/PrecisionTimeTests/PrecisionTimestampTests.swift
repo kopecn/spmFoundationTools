@@ -31,7 +31,7 @@ struct PrecisionTimestampTests {
         let timestamp1 = PrecisionTimestamp(seconds: 100, attoseconds: 0, sign: .positive)
         let result1 = timestamp1.addingTimeInterval(add: 2.5)
         #expect(result1.seconds == 102)
-        #expect(result1.attoseconds == 500_000_000_000_000_000) // 0.5 seconds in attoseconds
+        #expect(result1.attoseconds == 500_000_000_000_000_000)  // 0.5 seconds in attoseconds
         #expect(result1.sign == .positive)
 
         // Test adding negative Double
@@ -58,7 +58,7 @@ struct PrecisionTimestampTests {
         #expect(result1.seconds == 11)
         // Float has less precision, so allow tolerance
         let expectedAtto1 = UInt64(0.25 * Float(PrecisionTimeInterval.attosecondsPerSecond))
-        let tolerance1: UInt64 = 100_000_000_000 // 0.0000001 seconds tolerance for Float precision
+        let tolerance1: UInt64 = 100_000_000_000  // 0.0000001 seconds tolerance for Float precision
         #expect(result1.attoseconds > expectedAtto1 - tolerance1 && result1.attoseconds < expectedAtto1 + tolerance1)
         #expect(result1.sign == .positive)
 

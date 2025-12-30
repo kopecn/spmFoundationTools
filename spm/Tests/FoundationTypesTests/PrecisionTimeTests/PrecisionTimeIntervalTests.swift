@@ -462,7 +462,7 @@ struct PrecisionTimeIntervalArithmeticTests {
                 PrecisionTimeInterval(seconds: UInt64.max - 5, milliseconds: 800, sign: .negative),
                 PrecisionTimeInterval(seconds: 10, milliseconds: 500, sign: .negative),
                 PrecisionTimeInterval(seconds: UInt64.max, attoseconds: 0, sign: .negative),
-                PrecisionTimeInterval(seconds: UInt64.max - 15, milliseconds: 300,sign: .negative)
+                PrecisionTimeInterval(seconds: UInt64.max - 15, milliseconds: 300, sign: .negative)
             ),
 
             (
@@ -514,7 +514,7 @@ struct PrecisionTimeIntervalArithmeticTests {
         let interval2 = PrecisionTimeInterval(seconds: 20, attoseconds: 0, sign: .positive)
         let result2 = interval2.addingTimeInterval(add: -7.5)
         #expect(result2.seconds == 12)
-        #expect(result2.attoseconds == 500_000_000_000_000_000) // 0.5 seconds in attoseconds
+        #expect(result2.attoseconds == 500_000_000_000_000_000)  // 0.5 seconds in attoseconds
         #expect(result2.sign == .positive)
 
         // Test adding to negative interval
@@ -534,7 +534,7 @@ struct PrecisionTimeIntervalArithmeticTests {
 
     @Test("Adding Time Interval - Float")
     func addingTimeIntervalFloat() {
-        let tolerance: UInt64 = 100_000_000_000 // 0.0000001 seconds tolerance for Float precision
+        let tolerance: UInt64 = 100_000_000_000  // 0.0000001 seconds tolerance for Float precision
 
         // Test adding positive Float
         let interval1 = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)

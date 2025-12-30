@@ -174,3 +174,15 @@ public struct PrecisionTimeInterval: Sendable {
         Self.normalize(&storage, &sign)
     }
 }
+
+extension PrecisionTimeInterval {
+    public static var oneSecond: PrecisionTimeInterval {
+        return PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
+    }
+    public static var oneMillisecond: PrecisionTimeInterval {
+        return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerMilliSecond, sign: .positive)
+    }
+    public static var oneMicrosecond: PrecisionTimeInterval {
+        return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerMicroSecond, sign: .positive)
+    }
+}
