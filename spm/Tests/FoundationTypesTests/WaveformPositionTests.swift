@@ -11,17 +11,17 @@ struct WaveformPositionBasicTests {
     @Test("Basic initialization")
     func basicInitialization() {
         let positions = [FloatPosition.origin, FloatPosition.unitX]
-        let waveform = FloatWaveformPosition(values: positions, dt: 0.001, t0: PrecisionTimestamp())
+        let waveform = FloatWaveformPosition(values: positions, dt: .oneMillisecond, t0: PrecisionTimestamp())
 
         #expect(waveform.values.count == 2)
-        #expect(waveform.dt == 0.001)
+        #expect(waveform.dt == .oneMillisecond)
         #expect(waveform.t0 != nil)
     }
 
     @Test("Codable round-trip")
     func codableRoundTrip() throws {
         let positions = [DoublePosition.origin, DoublePosition.unitX, DoublePosition.unitY]
-        let waveform = DoubleWaveformPosition(values: positions, dt: 0.01, t0: PrecisionTimestamp())
+        let waveform = DoubleWaveformPosition(values: positions, dt: .oneMillisecond * 10, t0: PrecisionTimestamp())
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(waveform)
@@ -39,7 +39,7 @@ struct WaveformPositionBasicTests {
             FloatPosition(x: 1.0, y: 2.0, z: 3.0),
             FloatPosition(x: 4.0, y: 5.0, z: 6.0),
         ]
-        let waveform = FloatWaveformPosition(values: positions, dt: 0.1, t0: PrecisionTimestamp())
+        let waveform = FloatWaveformPosition(values: positions, dt: .oneDecisecond, t0: PrecisionTimestamp())
 
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_poss.csv")
@@ -48,7 +48,7 @@ struct WaveformPositionBasicTests {
         let imported = try FloatWaveformPosition.importFromCSV(from: tempURL)
 
         #expect(imported.values.count == waveform.values.count)
-        #expect(abs(imported.dt - waveform.dt) < 1e-6)
+        #expect(abs((imported.dt - waveform.dt).secondsAsDouble) < 1e-6)
 
         // Clean up
         try? FileManager.default.removeItem(at: tempURL)
@@ -209,7 +209,7 @@ struct WaveformPositionFileOperationsTests {
             DoublePosition(x: 1.0, y: 2.0, z: 3.0),
             DoublePosition(x: 4.0, y: 5.0, z: 6.0),
         ]
-        let original = DoubleWaveformPosition(values: positions, dt: 0.01, t0: PrecisionTimestamp())
+        let original = DoubleWaveformPosition(values: positions, dt: .oneMillisecond * 10, t0: PrecisionTimestamp())
 
         let fileURL = tempDir.appendingPathComponent("test.json")
         try original.save(to: fileURL)
@@ -224,7 +224,7 @@ struct WaveformPositionFileOperationsTests {
     @Test("JSON string conversion")
     func jsonStringConversion() throws {
         let positions = [FloatPosition.unitX, FloatPosition.unitY]
-        let waveform = FloatWaveformPosition(values: positions, dt: 0.001)
+        let waveform = FloatWaveformPosition(values: positions, dtSeconds: 0.001)
 
         let jsonString = try waveform.toJSONString()
 
@@ -241,7 +241,7 @@ struct WaveformPositionFileOperationsTests {
 
         // Test Double convenience methods
         let doublePositions = [DoublePosition.origin, DoublePosition.unitZ]
-        let doubleWaveform = DoubleWaveformPosition(values: doublePositions, dt: 0.1)
+        let doubleWaveform = DoubleWaveformPosition(values: doublePositions, dtSeconds: 0.1)
 
         let doubleJsonURL = tempDir.appendingPathComponent("double.json")
         try doubleWaveform.save(to: doubleJsonURL)
@@ -250,7 +250,7 @@ struct WaveformPositionFileOperationsTests {
 
         // Test Float convenience methods
         let floatPositions = [FloatPosition.origin, FloatPosition.unitX]
-        let floatWaveform = FloatWaveformPosition(values: floatPositions, dt: 0.05)
+        let floatWaveform = FloatWaveformPosition(values: floatPositions, dtSeconds: 0.05)
 
         let floatJsonURL = tempDir.appendingPathComponent("float.json")
         try floatWaveform.save(to: floatJsonURL)
@@ -276,12 +276,12 @@ struct WaveformPositionFileOperationsTests {
         // Test Double CSV loading
         let doubleFromCSV = try DoubleWaveformPosition.loadFromCSV(csvURL)
         #expect(doubleFromCSV.values.count == 2)
-        #expect(abs(doubleFromCSV.dt - 0.1) < 1e-10)
+        #expect(abs(doubleFromCSV.dt.secondsAsDouble - 0.1) < 1e-10)
 
         // Test Float CSV loading
         let floatFromCSV = try FloatWaveformPosition.loadFromCSV(csvURL)
         #expect(floatFromCSV.values.count == 2)
-        #expect(abs(floatFromCSV.dt - 0.1) < 1e-6)
+        #expect(abs(floatFromCSV.dt.secondsAsDouble - 0.1) < 1e-6)
     }
 
     @Test("File error handling - nonexistent file")

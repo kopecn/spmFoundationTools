@@ -278,10 +278,10 @@ public struct PrecisionTimeInterval: Sendable {
             return
         }
 
-        let wholeSeconds = UInt64(abs(value))
-        let fractionalAttoseconds = UInt64(
-            (Double(value) - Double(wholeSeconds)) * Self.attosecondsPerSecondDouble
-        )
+        let absValue = abs(value)
+        let wholeSeconds = UInt64(absValue)
+        let fractionalPart = Double(absValue) - Double(wholeSeconds)
+        let fractionalAttoseconds = UInt64(fractionalPart * Self.attosecondsPerSecondDouble)
         storage = SIMD2(wholeSeconds, fractionalAttoseconds)
         sign = NumericSign(value)
         Self.normalize(&storage, &sign)

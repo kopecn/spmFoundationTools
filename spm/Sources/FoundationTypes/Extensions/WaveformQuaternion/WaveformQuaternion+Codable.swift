@@ -165,7 +165,6 @@ extension WaveformQuaternion where T: LosslessStringConvertible & BinaryFloating
 
         // Calculate dt from the difference between first two timestamps
         let dtSeconds = Double(timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0)
-        let dt = PrecisionTimeInterval(seconds: dtSeconds)
         let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
 
         return WaveformQuaternion<T>(values: quaternions, dtSeconds: dtSeconds, t0: t0)
