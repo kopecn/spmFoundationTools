@@ -30,6 +30,7 @@ public struct PrecisionTimeInterval: Sendable {
     /// Number of attoseconds in one second (1e18).
     public static let attosecondsPerSecond: UInt64 = 1_000_000_000_000_000_000
     public static let attosecondsPerSecondDouble: Double = 1_000_000_000_000_000_000
+    public static let attosecondsPerDeciSecond: UInt64 = 100_000_000_000_000_000
     /// Number of attoseconds in one millisecond (1e15).
     public static let attosecondsPerMilliSecond: UInt64 = 1_000_000_000_000_000
     /// Number of attoseconds in one microsecond (1e12).
@@ -300,6 +301,9 @@ public struct PrecisionTimeInterval: Sendable {
 extension PrecisionTimeInterval {
     public static var oneSecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
+    }
+    public static var oneDecisecond: PrecisionTimeInterval {
+        return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerDeciSecond, sign: .positive)
     }
     public static var oneMillisecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerMilliSecond, sign: .positive)
