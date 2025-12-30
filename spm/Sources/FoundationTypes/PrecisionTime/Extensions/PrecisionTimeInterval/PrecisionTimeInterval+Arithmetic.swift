@@ -239,8 +239,6 @@ extension PrecisionTimeInterval {
         resultSeconds: inout UInt64,
         resultAttoseconds: inout UInt64
     ) {
-        Self.attosecondsPerSecond
-        let wrap: UInt64 = 1_000_000_000_000_000_000 // 1e18
 
         // Split a and b into high and low 32-bit parts to avoid overflow
         let mask32: UInt64 = 0xFFFFFFFF
@@ -305,14 +303,14 @@ extension PrecisionTimeInterval {
             return .zero
         }
 
-        lhs.attoseconds 
+        var resultSeconds: UInt64 = lhs.seconds
+        var resultAtto: UInt64 = lhs.attoseconds
 
-        // Convert to floating point for multiplication
-        let lhsSeconds: Double = lhs.asFloatingPoint()
-        let rhsSeconds: Double = rhs.asFloatingPoint()
-        let resultSeconds = lhsSeconds * rhsSeconds
+        Self.multiplyAttoseconds(rhs.seconds, lhs.attoseconds, resultSeconds: &resultSeconds, resultAttoseconds: &resultAtto)
 
-        return PrecisionTimeInterval(seconds: resultSeconds)
+        let sign: NumericSign = lhs.sign == rhs.sign ? .positive : .negative
+
+        return PrecisionTimeInterval(seconds: resultSeconds, attoseconds: resultAtto, sign: sign)
     }
 
     /// Compound assignment multiplication with PrecisionTimeInterval
@@ -368,14 +366,11 @@ extension PrecisionTimeInterval {
         rhs: T
     ) -> PrecisionTimeInterval {
         // Handle zero
-        if rhs == 0 {
+        guard rhs != 0 else {
             return .zero
         }
 
-        // Convert interval to floating point, multiply, and convert back
-        let intervalSeconds: T = lhs.asFloatingPoint()
-        let resultSeconds = intervalSeconds * rhs
-        return PrecisionTimeInterval(seconds: resultSeconds)
+        return lhs * PrecisionTimeInterval(seconds: rhs)
     }
 
     /// Multiply a time interval by an integer scalar value
@@ -395,13 +390,10 @@ extension PrecisionTimeInterval {
         rhs: T
     ) -> PrecisionTimeInterval {
         // Handle zero
-        if rhs == 0 {
+        guard rhs != 0 else {
             return .zero
         }
-
-        // Convert to PrecisionTimeInterval and use interval multiplication
-        let multiplier = PrecisionTimeInterval(seconds: rhs)
-        return lhs * multiplier
+        return lhs * PrecisionTimeInterval(seconds: rhs)
     }
 
     /// Multiply a floating-point scalar value by a time interval (commutative)
@@ -538,18 +530,19 @@ extension PrecisionTimeInterval {
     /// let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive) // 10s
     /// let halved = interval / 2.0 // 5s (but may have rounding errors)
     /// ```
-    @available(*, deprecated, message: "BinaryFloatingPoint may lose precision. Prefer PrecisionTimeInterval.")
-    @_disfavoredOverload
-    @inlinable
-    public static func / <T: BinaryFloatingPoint>(
-        lhs: PrecisionTimeInterval,
-        rhs: T
-    ) -> PrecisionTimeInterval {
-        // Convert interval to floating point, divide, and convert back
-        let intervalSeconds: T = lhs.asFloatingPoint()
-        let resultSeconds = intervalSeconds / rhs
-        return PrecisionTimeInterval(seconds: resultSeconds)
-    }
+    // FIXME: - complete division at a later date
+    // @available(*, deprecated, message: "BinaryFloatingPoint may lose precision. Prefer PrecisionTimeInterval.")
+    // @_disfavoredOverload
+    // @inlinable
+    // public static func / <T: BinaryFloatingPoint>(
+    //     lhs: PrecisionTimeInterval,
+    //     rhs: T
+    // ) -> PrecisionTimeInterval {
+    //     // Convert interval to floating point, divide, and convert back
+    //     let intervalSeconds: T = lhs.asFloatingPoint()
+    //     let resultSeconds = intervalSeconds / rhs
+    //     return PrecisionTimeInterval(seconds: resultSeconds)
+    // }
 
     /// Divide a time interval by an integer scalar value
     /// - Parameters:
@@ -565,16 +558,17 @@ extension PrecisionTimeInterval {
     /// let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive) // 10s
     /// let result = interval / 3 // 3.333... seconds
     /// ```
-    @inlinable
-    public static func / <T: BinaryInteger>(
-        lhs: PrecisionTimeInterval,
-        rhs: T
-    ) -> PrecisionTimeInterval {
-        // Convert to PrecisionTimeInterval and use interval division
-        let divisor = PrecisionTimeInterval(seconds: rhs)
-        let ratio: Double = lhs / divisor
-        return PrecisionTimeInterval(seconds: ratio)
-    }
+    // FIXME: - complete division at a later date
+    // @inlinable
+    // public static func / <T: BinaryInteger>(
+    //     lhs: PrecisionTimeInterval,
+    //     rhs: T
+    // ) -> PrecisionTimeInterval {
+    //     // Convert to PrecisionTimeInterval and use interval division
+    //     let divisor = PrecisionTimeInterval(seconds: rhs)
+    //     let ratio: Double = lhs / divisor
+    //     return PrecisionTimeInterval(seconds: ratio)
+    // }
 
     /// Compound assignment division with floating-point scalar
     /// - Parameters:
@@ -599,19 +593,20 @@ extension PrecisionTimeInterval {
     /// var interval = PrecisionTimeInterval(seconds: 9, attoseconds: 0, sign: .positive)
     /// interval /= 3.0 // interval is now 3s (but may have rounding errors)
     /// ```
-    @available(
-        *,
-        deprecated,
-        message: "BinaryFloatingPoint may lose precision. Consider converting to PrecisionTimeInterval."
-    )
-    @_disfavoredOverload
-    @inlinable
-    public static func /= <T: BinaryFloatingPoint>(
-        lhs: inout PrecisionTimeInterval,
-        rhs: T
-    ) {
-        lhs = lhs / rhs
-    }
+    // FIXME: - complete division at a later date
+    // @available(
+    //     *,
+    //     deprecated,
+    //     message: "BinaryFloatingPoint may lose precision. Consider converting to PrecisionTimeInterval."
+    // )
+    // @_disfavoredOverload
+    // @inlinable
+    // public static func /= <T: BinaryFloatingPoint>(
+    //     lhs: inout PrecisionTimeInterval,
+    //     rhs: T
+    // ) {
+    //     lhs = lhs / rhs
+    // }
 
     /// Compound assignment division with integer scalar
     /// - Parameters:
@@ -623,13 +618,14 @@ extension PrecisionTimeInterval {
     /// var interval = PrecisionTimeInterval(seconds: 9, attoseconds: 0, sign: .positive)
     /// interval /= 3 // interval is now 3s
     /// ```
-    @inlinable
-    public static func /= <T: BinaryInteger>(
-        lhs: inout PrecisionTimeInterval,
-        rhs: T
-    ) {
-        lhs = lhs / rhs
-    }
+    // FIXME: - complete division at a later date
+    // @inlinable
+    // public static func /= <T: BinaryInteger>(
+    //     lhs: inout PrecisionTimeInterval,
+    //     rhs: T
+    // ) {
+    //     lhs = lhs / rhs
+    // }
 
     /// Divide a time interval by another time interval to get a scalar ratio
     /// - Parameters:
@@ -643,13 +639,14 @@ extension PrecisionTimeInterval {
     /// let interval2 = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
     /// let ratio: Double = interval1 / interval2 // 5.0
     /// ```
-    @inlinable
-    public static func / <T: BinaryFloatingPoint>(
-        lhs: PrecisionTimeInterval,
-        rhs: PrecisionTimeInterval
-    ) -> T {
-        let lhsSeconds: T = lhs.asFloatingPoint()
-        let rhsSeconds: T = rhs.asFloatingPoint()
-        return lhsSeconds / rhsSeconds
-    }
+    // FIXME: - complete division at a later date
+    // @inlinable
+    // public static func / <T: BinaryFloatingPoint>(
+    //     lhs: PrecisionTimeInterval,
+    //     rhs: PrecisionTimeInterval
+    // ) -> T {
+    //     let lhsSeconds: T = lhs.asFloatingPoint()
+    //     let rhsSeconds: T = rhs.asFloatingPoint()
+    //     return lhsSeconds / rhsSeconds
+    // }
 }
