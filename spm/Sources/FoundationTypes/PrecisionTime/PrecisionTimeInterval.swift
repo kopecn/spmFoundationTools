@@ -50,6 +50,11 @@ public struct PrecisionTimeInterval: Sendable {
             return
         }
 
+        if storage[0] == UInt64.max { 
+            storage = SIMD2(UInt64.max, 0)
+            return
+        }
+
         storage = SIMD2(totalSeconds, storage[1] % attosecondsPerSecond)
 
         guard storage[0] == 0, storage[1] == 0 else { return }

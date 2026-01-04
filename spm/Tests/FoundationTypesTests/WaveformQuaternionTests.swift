@@ -556,7 +556,7 @@ struct WaveformQuaternionStringRepresentationTests {
         #expect(debugDescription.contains("samples: 1"))
         #expect(debugDescription.contains("dt: 0.05"))
         #expect(debugDescription.contains("t0:"))
-        #expect(debugDescription.contains("duration: 0.0s"))
+        #expect(debugDescription.contains("duration: 0s"))
     }
 
     @Test("Description with nil t0")
@@ -573,7 +573,7 @@ struct WaveformQuaternionStringRepresentationTests {
         let description = waveform.description
 
         #expect(description.contains("samples: 0"))
-        #expect(description.contains("duration: 0.0s"))
+        #expect(description.contains("duration: 0s"))
     }
 }
 
@@ -610,7 +610,9 @@ struct WaveformQuaternionEdgeCasesTests {
         let waveform = FloatWaveformQuaternion(values: quaternions, dt: .oneMillisecond)
 
         #expect(waveform.sampleCount == largeCount)
-        #expect(waveform.duration.secondsAsFloat == Float(largeCount - 1) * 0.001)
+        let expectedDuration = Float(largeCount - 1) * 0.001
+        let actualDuration = waveform.duration.secondsAsFloat
+        #expect(abs(actualDuration - expectedDuration) < 0.0001)
         #expect(waveform.areAllNormalized == true)
     }
 

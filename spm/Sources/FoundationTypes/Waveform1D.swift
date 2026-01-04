@@ -76,7 +76,7 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
     /// Get the total duration of the waveform as a PrecisionTimeInterval
     public var duration: PrecisionTimeInterval {
         guard values.count > 1 else { return .zero }
-        return dt * values.count
+        return dt * (values.count - 1)
     }
 
     // FIXME: -- 

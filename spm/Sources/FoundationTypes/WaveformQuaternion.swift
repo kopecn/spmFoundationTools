@@ -71,7 +71,7 @@ public struct WaveformQuaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable>
     /// Get the total duration of the waveform as a PrecisionTimeInterval
     public var duration: PrecisionTimeInterval {
         guard values.count > 1 else { return .zero }
-        return dt * values.count
+        return dt * (values.count - 1)
     }
 
     // FIXME: -- 
@@ -238,11 +238,15 @@ extension WaveformQuaternion: Hashable where T: Hashable {
 // MARK: - CustomStringConvertible
 extension WaveformQuaternion: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "WaveformQuaternion(samples: \(sampleCount), dt: \(dt), duration: \(duration))"
+        let durationStr = duration.description
+        let durationWithUnit = durationStr.hasSuffix("s") ? durationStr : "\(durationStr)s"
+        return "WaveformQuaternion(samples: \(sampleCount), dt: \(dt), duration: \(durationWithUnit))"
     }
 
     public var debugDescription: String {
+        let durationStr = duration.description
+        let durationWithUnit = durationStr.hasSuffix("s") ? durationStr : "\(durationStr)s"
         return
-            "WaveformQuaternion<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(duration))"
+            "WaveformQuaternion<\(T.self)>(samples: \(sampleCount), dt: \(dt), t0: \(t0?.description ?? "nil"), duration: \(durationWithUnit))"
     }
 }

@@ -231,7 +231,51 @@ extension PrecisionTimeInterval {
 
     // MARK: - Multiplication
 
-    /// Multiplies two UInt64 attosecond values, outputs result as seconds and attoseconds remainder
+    /// Divides a 128-bit number (high * 2^64 + low) by a 64-bit divisor
+    /// Returns (quotient, remainder)
+    @inlinable
+    internal static func divide128By64(
+        high: UInt64,
+        low: UInt64,
+        by divisor: UInt64
+    ) -> (quotient: UInt64, remainder: UInt64) {
+        // Handle simple case where high fits in the quotient range
+        let highQuotient = high / divisor
+        let highRemainder = high % divisor
+
+        // Now divide (highRemainder * 2^64 + low) by divisor
+        // Use double-precision division approximation with correction
+        if highRemainder == 0 {
+            return (highQuotient + low / divisor, low % divisor)
+        }
+
+        // For highRemainder * 2^64 + low, we need careful handling
+        // Use the identity: 2^64 = q*divisor + r where q and r are precomputed
+        // For divisor = 10^18: 2^64 = 18 * 10^18 + 446744073709551616
+        let twoTo64DivDivisor: UInt64 = (divisor == Self.attosecondsPerSecond)
+            ? 18
+            : UInt64.max / divisor + 1
+        let twoTo64ModDivisor: UInt64 = (divisor == Self.attosecondsPerSecond)
+            ? 446_744_073_709_551_616
+            : (UInt64.max % divisor) + 1
+
+        let quotientFromHigh = highRemainder * twoTo64DivDivisor
+
+        // Now handle (highRemainder * twoTo64ModDivisor + low) / divisor
+        let (prodHigh, prodLow) = highRemainder.multipliedFullWidth(by: twoTo64ModDivisor)
+        let (sumLow, carry) = prodLow.addingReportingOverflow(low)
+        let sumHigh = prodHigh &+ (carry ? 1 : 0)
+
+        // Recursively divide if needed, but typically sumHigh is small
+        let (extraQuotient, finalRemainder) = sumHigh == 0
+            ? (sumLow / divisor, sumLow % divisor)
+            : divide128By64(high: sumHigh, low: sumLow, by: divisor)
+
+        return (highQuotient + quotientFromHigh + extraQuotient, finalRemainder)
+    }
+
+    /// Multiplies two UInt64 values, outputs result divided by attosecondsPerSecond
+    /// Returns quotient in resultSeconds and remainder in resultAttoseconds
     @inlinable
     internal static func multiplyAttoseconds(
         _ a: UInt64,
@@ -239,42 +283,18 @@ extension PrecisionTimeInterval {
         resultSeconds: inout UInt64,
         resultAttoseconds: inout UInt64
     ) {
+        // Use Swift's built-in full-width multiplication to get the 128-bit result
+        let (high, low) = a.multipliedFullWidth(by: b)
 
-        // Split a and b into high and low 32-bit parts to avoid overflow
-        let mask32: UInt64 = 0xFFFFFFFF
-        let aLow = a & mask32
-        let aHigh = a >> 32
-        let bLow = b & mask32
-        let bHigh = b >> 32
+        // Divide the 128-bit result by attosecondsPerSecond
+        let (quotient, remainder) = divide128By64(
+            high: high,
+            low: low,
+            by: Self.attosecondsPerSecond
+        )
 
-        // Multiply parts
-        let lowLow = aLow * bLow                  // fits in 64-bit
-        let lowHigh = aLow * bHigh
-        let highLow = aHigh * bLow
-        let highHigh = aHigh * bHigh
-
-        // Combine partial products safely
-        var total = lowLow
-        var carry = total / Self.attosecondsPerSecond
-        total = total % Self.attosecondsPerSecond
-
-        // Add lowHigh shifted
-        let lowHighShift = lowHigh << 32
-        carry += lowHighShift / Self.attosecondsPerSecond
-        total = (total + (lowHighShift % Self.attosecondsPerSecond)) % Self.attosecondsPerSecond
-
-        // Add highLow shifted
-        let highLowShift = highLow << 32
-        carry += highLowShift / Self.attosecondsPerSecond
-        total = (total + (highLowShift % Self.attosecondsPerSecond)) % Self.attosecondsPerSecond
-
-        // Add highHigh shifted
-        let highHighShift = highHigh << 64
-        carry += highHighShift / Self.attosecondsPerSecond
-        total = (total + (highHighShift % Self.attosecondsPerSecond)) % Self.attosecondsPerSecond
-
-        resultSeconds = carry
-        resultAttoseconds = total
+        resultSeconds = quotient
+        resultAttoseconds = remainder
     }
 
 
@@ -303,14 +323,54 @@ extension PrecisionTimeInterval {
             return .zero
         }
 
-        var resultSeconds: UInt64 = lhs.seconds
-        var resultAtto: UInt64 = lhs.attoseconds
+        var totalSeconds: UInt64 = 0
+        var totalAttoseconds: UInt64 = 0
 
-        Self.multiplyAttoseconds(rhs.seconds, lhs.attoseconds, resultSeconds: &resultSeconds, resultAttoseconds: &resultAtto)
+        // Product 1: lhs.seconds * rhs.seconds (direct seconds contribution)
+        let (secProduct, overflow1) = lhs.seconds.multipliedReportingOverflow(by: rhs.seconds)
+        if overflow1 {
+            // Overflow - return max value
+            return PrecisionTimeInterval(SIMD2(UInt64.max, 0), lhs.sign == rhs.sign ? .positive : .negative)
+        }
+        totalSeconds = secProduct
+
+        // Product 2: lhs.seconds * rhs.attoseconds (result in attoseconds)
+        var tempSeconds: UInt64 = 0
+        var tempAttoseconds: UInt64 = 0
+        Self.multiplyAttoseconds(lhs.seconds, rhs.attoseconds, resultSeconds: &tempSeconds, resultAttoseconds: &tempAttoseconds)
+        let (sum1, overflow2) = totalSeconds.addingReportingOverflow(tempSeconds)
+        if overflow2 {
+            return PrecisionTimeInterval(SIMD2(UInt64.max, 0), lhs.sign == rhs.sign ? .positive : .negative)
+        }
+        totalSeconds = sum1
+        totalAttoseconds = totalAttoseconds &+ tempAttoseconds
+
+        // Product 3: lhs.attoseconds * rhs.seconds (result in attoseconds)
+        Self.multiplyAttoseconds(lhs.attoseconds, rhs.seconds, resultSeconds: &tempSeconds, resultAttoseconds: &tempAttoseconds)
+        let (sum2, overflow3) = totalSeconds.addingReportingOverflow(tempSeconds)
+        if overflow3 {
+            return PrecisionTimeInterval(SIMD2(UInt64.max, 0), lhs.sign == rhs.sign ? .positive : .negative)
+        }
+        totalSeconds = sum2
+        totalAttoseconds = totalAttoseconds &+ tempAttoseconds
+
+        // Product 4: lhs.attoseconds * rhs.attoseconds (result in 10^-36 seconds)
+        Self.multiplyAttoseconds(lhs.attoseconds, rhs.attoseconds, resultSeconds: &tempSeconds, resultAttoseconds: &tempAttoseconds)
+        // tempSeconds is in attoseconds, tempAttoseconds is sub-attosecond precision (can be ignored)
+        totalAttoseconds = totalAttoseconds &+ tempSeconds
+
+        // Normalize: carry attoseconds to seconds
+        let carry = totalAttoseconds / attosecondsPerSecond
+        totalAttoseconds = totalAttoseconds % attosecondsPerSecond
+        let (finalSeconds, overflow4) = totalSeconds.addingReportingOverflow(carry)
+        if overflow4 {
+            return PrecisionTimeInterval(SIMD2(UInt64.max, 0), lhs.sign == rhs.sign ? .positive : .negative)
+        }
+        totalSeconds = finalSeconds
 
         let sign: NumericSign = lhs.sign == rhs.sign ? .positive : .negative
 
-        return PrecisionTimeInterval(seconds: resultSeconds, attoseconds: resultAtto, sign: sign)
+        return PrecisionTimeInterval(seconds: totalSeconds, attoseconds: totalAttoseconds, sign: sign)
     }
 
     /// Compound assignment multiplication with PrecisionTimeInterval

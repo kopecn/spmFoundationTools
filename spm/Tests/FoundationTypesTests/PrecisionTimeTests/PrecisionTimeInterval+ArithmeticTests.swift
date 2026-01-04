@@ -688,3 +688,328 @@ struct PrecisionTimeIntervalArithmeticTests {
         #expect(resultAttoseconds1 == resultAttoseconds2, "Multiplication should be commutative (attoseconds)")
     }
 }
+
+// MARK: - Multiplication Operator Tests
+@Suite("PrecisionTimeInterval Multiplication Tests")
+struct PrecisionTimeIntervalMultiplicationTests {
+
+    // MARK: - Basic Multiplication Tests
+
+    @Test("Multiply zero by anything equals zero")
+    func multiplyByZero() {
+        let zero = PrecisionTimeInterval.zero
+        let interval = PrecisionTimeInterval(seconds: 100, attoseconds: 0, sign: .positive)
+
+        let result1 = zero * interval
+        let result2 = interval * zero
+
+        #expect(result1.isZero, "Zero * interval should be zero")
+        #expect(result2.isZero, "interval * zero should be zero")
+    }
+
+    @Test("Multiply simple whole seconds")
+    func multiplyWholeSeconds() {
+        let interval1 = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .positive)
+        let interval2 = PrecisionTimeInterval(seconds: 4, attoseconds: 0, sign: .positive)
+
+        let result = interval1 * interval2
+
+        #expect(result.seconds == 12, "3 * 4 should equal 12 seconds")
+        #expect(result.attoseconds == 0, "Should have no attosecond component")
+        #expect(result.sign == .positive, "Positive * positive should be positive")
+    }
+
+    @Test("Regression: 0.001 * 100000 = 100 (original bug case)")
+    func regressionTestOriginalBug() {
+        // This is the exact case that was failing in Waveform1DTests
+        let dt = PrecisionTimeInterval(seconds: 0.001)
+        let count = PrecisionTimeInterval(seconds: 100_000)
+
+        let result = dt * count
+
+        #expect(result.seconds == 100, "0.001 * 100000 should equal 100 seconds")
+        #expect(result.attoseconds == 0, "Should have no attosecond remainder")
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Multiply intervals with attoseconds only")
+    func multiplyAttosecondsOnly() {
+        // 0.5 seconds * 0.5 seconds = 0.25 seconds
+        let half = PrecisionTimeInterval(seconds: 0, attoseconds: 500_000_000_000_000_000, sign: .positive)
+
+        let result = half * half
+
+        #expect(result.seconds == 0, "0.5 * 0.5 should equal 0 seconds")
+        #expect(result.attoseconds == 250_000_000_000_000_000, "0.5 * 0.5 should equal 0.25 seconds in attoseconds")
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Multiply mixed seconds and attoseconds")
+    func multiplyMixedComponents() {
+        // 1.5 seconds * 2.0 seconds = 3.0 seconds
+        let onePointFive = PrecisionTimeInterval(seconds: 1, attoseconds: 500_000_000_000_000_000, sign: .positive)
+        let two = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
+
+        let result = onePointFive * two
+
+        #expect(result.seconds == 3, "1.5 * 2 should equal 3 seconds")
+        #expect(result.attoseconds == 0, "Should have no attosecond remainder")
+        #expect(result.sign == .positive)
+    }
+
+    // MARK: - All Four Products Test
+
+    @Test("Verify all four multiplication products are computed")
+    func allFourProducts() {
+        // This test ensures all four products are being computed:
+        // (2.3 * 3.7) = 2 * 3 + 2 * 0.7 + 0.3 * 3 + 0.3 * 0.7
+        //             = 6 + 1.4 + 0.9 + 0.21 = 8.51
+
+        let a = PrecisionTimeInterval(seconds: 2, attoseconds: 300_000_000_000_000_000, sign: .positive) // 2.3
+        let b = PrecisionTimeInterval(seconds: 3, attoseconds: 700_000_000_000_000_000, sign: .positive) // 3.7
+
+        let result = a * b
+
+        // Expected: 8.51 seconds
+        #expect(result.seconds == 8, "2.3 * 3.7 should equal 8 seconds")
+        #expect(result.attoseconds == 510_000_000_000_000_000, "2.3 * 3.7 should have 0.51 in attoseconds")
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Product 1: seconds * seconds only")
+    func productOneOnly() {
+        // When only seconds are non-zero, only product 1 matters
+        let interval1 = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+        let interval2 = PrecisionTimeInterval(seconds: 7, attoseconds: 0, sign: .positive)
+
+        let result = interval1 * interval2
+
+        #expect(result.seconds == 35, "5 * 7 should equal 35")
+        #expect(result.attoseconds == 0)
+    }
+
+    @Test("Product 2 & 3: seconds * attoseconds cross terms")
+    func productsTwoAndThree() {
+        // 2 seconds * 0.5 seconds = 1.0 second (product 2)
+        // 0 attoseconds * 2 seconds = 0 (product 3)
+        let two = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
+        let half = PrecisionTimeInterval(seconds: 0, attoseconds: 500_000_000_000_000_000, sign: .positive)
+
+        let result = two * half
+
+        #expect(result.seconds == 1, "2 * 0.5 should equal 1 second")
+        #expect(result.attoseconds == 0)
+    }
+
+    @Test("Product 4: attoseconds * attoseconds only")
+    func productFourOnly() {
+        // 0.1 * 0.1 = 0.01
+        let tenth = PrecisionTimeInterval(seconds: 0, attoseconds: 100_000_000_000_000_000, sign: .positive)
+
+        let result = tenth * tenth
+
+        #expect(result.seconds == 0, "0.1 * 0.1 should equal 0 seconds")
+        #expect(result.attoseconds == 10_000_000_000_000_000, "0.1 * 0.1 should equal 0.01 seconds")
+    }
+
+    // MARK: - Sign Handling Tests
+
+    @Test("Positive * Positive = Positive")
+    func positiveTimesPositive() {
+        let a = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .positive)
+        let b = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+
+        let result = a * b
+
+        #expect(result.sign == .positive, "Positive * positive should be positive")
+        #expect(result.seconds == 15)
+    }
+
+    @Test("Positive * Negative = Negative")
+    func positiveTimesNegative() {
+        let a = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .positive)
+        let b = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .negative)
+
+        let result = a * b
+
+        #expect(result.sign == .negative, "Positive * negative should be negative")
+        #expect(result.seconds == 15)
+    }
+
+    @Test("Negative * Positive = Negative")
+    func negativeTimesPositive() {
+        let a = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .negative)
+        let b = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+
+        let result = a * b
+
+        #expect(result.sign == .negative, "Negative * positive should be negative")
+        #expect(result.seconds == 15)
+    }
+
+    @Test("Negative * Negative = Positive")
+    func negativeTimesNegative() {
+        let a = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .negative)
+        let b = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .negative)
+
+        let result = a * b
+
+        #expect(result.sign == .positive, "Negative * negative should be positive")
+        #expect(result.seconds == 15)
+    }
+
+    // MARK: - Overflow Tests
+
+    @Test("Overflow in product 1: seconds overflow")
+    func overflowInSecondsProduct() {
+        let large = PrecisionTimeInterval(seconds: UInt64.max / 2, attoseconds: 0, sign: .positive)
+        let three = PrecisionTimeInterval(seconds: 3, attoseconds: 0, sign: .positive)
+
+        let result = large * three
+
+        // Should clamp to max on overflow
+        #expect(result.seconds == UInt64.max, "Overflow should clamp to max")
+        #expect(result.attoseconds == 0)
+    }
+
+    @Test("No overflow with reasonable values")
+    func noOverflowWithReasonableValues() {
+        let thousand = PrecisionTimeInterval(seconds: 1000, attoseconds: 0, sign: .positive)
+        let million = PrecisionTimeInterval(seconds: 1_000_000, attoseconds: 0, sign: .positive)
+
+        let result = thousand * million
+
+        #expect(result.seconds == 1_000_000_000, "1000 * 1000000 should equal 1 billion")
+        #expect(result.attoseconds == 0)
+    }
+
+    // MARK: - Commutativity Tests
+
+    @Test("Multiplication is commutative")
+    func commutativeProperty() {
+        let a = PrecisionTimeInterval(seconds: 2, attoseconds: 300_000_000_000_000_000, sign: .positive)
+        let b = PrecisionTimeInterval(seconds: 3, attoseconds: 700_000_000_000_000_000, sign: .positive)
+
+        let result1 = a * b
+        let result2 = b * a
+
+        #expect(result1.seconds == result2.seconds, "a * b should equal b * a (seconds)")
+        #expect(result1.attoseconds == result2.attoseconds, "a * b should equal b * a (attoseconds)")
+        #expect(result1.sign == result2.sign, "a * b should equal b * a (sign)")
+    }
+
+    // MARK: - Precision Tests
+
+    @Test("High precision multiplication")
+    func highPrecision() {
+        // Test with very small values to ensure attosecond precision
+        let microSecond = PrecisionTimeInterval(seconds: 0, attoseconds: 1_000_000_000_000, sign: .positive) // 1 microsecond
+        let hundred = PrecisionTimeInterval(seconds: 100, attoseconds: 0, sign: .positive)
+
+        let result = microSecond * hundred
+
+        #expect(result.seconds == 0, "1μs * 100 should be 0 seconds")
+        #expect(result.attoseconds == 100_000_000_000_000, "1μs * 100 should be 100 microseconds")
+    }
+
+    @Test("Decimal multiplication precision")
+    func decimalPrecision() {
+        // 0.3 * 0.3 = 0.09
+        let pointThree = PrecisionTimeInterval(seconds: 0, attoseconds: 300_000_000_000_000_000, sign: .positive)
+
+        let result = pointThree * pointThree
+
+        #expect(result.seconds == 0, "0.3 * 0.3 should be 0 seconds")
+        #expect(result.attoseconds == 90_000_000_000_000_000, "0.3 * 0.3 should be 0.09 seconds")
+    }
+
+    // MARK: - Compound Assignment Test
+
+    @Test("Compound assignment multiplication")
+    func compoundAssignment() {
+        var interval = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
+        let multiplier = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+
+        interval *= multiplier
+
+        #expect(interval.seconds == 10, "2 *= 5 should equal 10")
+        #expect(interval.attoseconds == 0)
+        #expect(interval.sign == .positive)
+    }
+
+    // MARK: - Edge Cases
+
+    @Test("Multiply by one (identity)")
+    func multiplyByOne() {
+        let interval = PrecisionTimeInterval(seconds: 7, attoseconds: 500_000_000_000_000_000, sign: .positive)
+        let one = PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
+
+        let result = interval * one
+
+        #expect(result.seconds == interval.seconds, "Multiplying by 1 should preserve seconds")
+        #expect(result.attoseconds == interval.attoseconds, "Multiplying by 1 should preserve attoseconds")
+        #expect(result.sign == interval.sign, "Multiplying by 1 should preserve sign")
+    }
+
+    @Test("Very small multiplication result")
+    func verySmallResult() {
+        // 0.001 * 0.001 = 0.000001 = 1 microsecond
+        let milliSecond = PrecisionTimeInterval(seconds: 0, attoseconds: 1_000_000_000_000_000, sign: .positive)
+
+        let result = milliSecond * milliSecond
+
+        #expect(result.seconds == 0, "0.001 * 0.001 should be 0 seconds")
+        #expect(result.attoseconds == 1_000_000_000_000, "0.001 * 0.001 should be 1 microsecond")
+    }
+
+    @Test("Scalar multiplication with integer")
+    func scalarIntegerMultiplication() {
+        let interval = PrecisionTimeInterval(seconds: 3, attoseconds: 500_000_000_000_000_000, sign: .positive)
+
+        let result = interval * 4
+
+        #expect(result.seconds == 14, "3.5 * 4 should equal 14 seconds")
+        #expect(result.attoseconds == 0, "Should have no attosecond remainder")
+    }
+
+    @Test("Scalar multiplication commutativity")
+    func scalarCommutativity() {
+        let interval = PrecisionTimeInterval(seconds: 2, attoseconds: 500_000_000_000_000_000, sign: .positive)
+
+        let result1 = interval * 3
+        let result2 = 3 * interval
+
+        #expect(result1.seconds == result2.seconds, "Scalar multiplication should be commutative")
+        #expect(result1.attoseconds == result2.attoseconds, "Scalar multiplication should be commutative")
+    }
+
+    // MARK: - Regression Tests for Original Bug
+
+    @Test("Original bug would have failed: only computed product 3")
+    func originalBugRegression() {
+        // The original bug only computed: rhs.seconds * lhs.attoseconds
+        // This test ensures all products are now being computed
+
+        let a = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let b = PrecisionTimeInterval(seconds: 0, attoseconds: 100_000_000_000_000_000, sign: .positive) // 0.1
+
+        let result = a * b
+
+        // With the bug: would only compute product 3: 0.1 * 10 = 1.0 (WRONG)
+        // Correct: 10 * 0.1 = 1.0 (from product 2)
+        #expect(result.seconds == 1, "10 * 0.1 should equal 1 second")
+        #expect(result.attoseconds == 0)
+    }
+
+    @Test("Ensure product 1 is included (missing in original bug)")
+    func productOneMissing() {
+        // Original bug would compute 0 for this (missing product 1)
+        let a = PrecisionTimeInterval(seconds: 100, attoseconds: 0, sign: .positive)
+        let b = PrecisionTimeInterval(seconds: 200, attoseconds: 0, sign: .positive)
+
+        let result = a * b
+
+        #expect(result.seconds == 20_000, "100 * 200 should equal 20000 seconds")
+        #expect(result.attoseconds == 0)
+    }
+}

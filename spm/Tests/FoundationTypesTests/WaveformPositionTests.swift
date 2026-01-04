@@ -230,7 +230,8 @@ struct WaveformPositionFileOperationsTests {
 
         #expect(jsonString.contains("\"values\""))
         #expect(jsonString.contains("\"dt\""))
-        #expect(jsonString.contains("0.001"))
+        #expect(jsonString.contains("\"seconds\""))
+        #expect(jsonString.contains("\"attoseconds\""))
         #expect(jsonString.contains("\n"))  // Pretty printed
     }
 
