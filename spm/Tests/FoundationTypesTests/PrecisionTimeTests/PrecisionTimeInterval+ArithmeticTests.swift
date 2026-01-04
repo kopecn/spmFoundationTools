@@ -1013,3 +1013,236 @@ struct PrecisionTimeIntervalMultiplicationTests {
         #expect(result.attoseconds == 0)
     }
 }
+
+// MARK: - Division Tests
+
+@Suite("PrecisionTimeInterval Division Tests")
+struct PrecisionTimeIntervalDivisionTests {
+
+    // MARK: - Basic Division Tests
+
+    @Test("Divide simple whole seconds")
+    func divideWholeSeconds() {
+        let interval = PrecisionTimeInterval(seconds: 12, attoseconds: 0, sign: .positive)
+        let divisor = 4
+
+        let result = interval / divisor
+
+        #expect(result.seconds == 3, "12 / 4 should equal 3 seconds")
+        #expect(result.attoseconds == 0, "Should have no attosecond component")
+        #expect(result.sign == .positive, "Positive / positive should be positive")
+    }
+
+    @Test("Divide with fractional result")
+    func divideWithFraction() {
+        let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let divisor = 3
+
+        let result = interval / divisor
+
+        // 10 / 3 = 3.333... seconds
+        #expect(result.seconds == 3, "10 / 3 should equal 3 seconds")
+        // Check that attoseconds represents 0.333... (approximately 333333333333333333 attoseconds)
+        let expectedAtto = UInt64((1.0 / 3.0) * Double(PrecisionTimeInterval.attosecondsPerSecond))
+        let tolerance: UInt64 = 100_000 // Allow reasonable rounding tolerance
+        #expect(result.attoseconds > expectedAtto - tolerance && result.attoseconds < expectedAtto + tolerance)
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Divide with attoseconds")
+    func divideWithAttoseconds() {
+        // 1.5 seconds / 2 = 0.75 seconds
+        let interval = PrecisionTimeInterval(seconds: 1, attoseconds: 500_000_000_000_000_000, sign: .positive)
+        let divisor = 2
+
+        let result = interval / divisor
+
+        #expect(result.seconds == 0, "1.5 / 2 should equal 0 seconds")
+        #expect(result.attoseconds == 750_000_000_000_000_000, "1.5 / 2 should equal 0.75 seconds in attoseconds")
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Divide zero by anything equals zero")
+    func divideZeroByAnything() {
+        let zero = PrecisionTimeInterval.zero
+        let divisor = 5
+
+        let result = zero / divisor
+
+        #expect(result.isZero, "Zero / anything should be zero")
+    }
+
+    @Test("High precision division")
+    func highPrecisionDivision() {
+        // Test that we maintain full precision in division
+        let interval = PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
+        let divisor = 7
+
+        let result = interval / divisor
+
+        // 1 / 7 = 0.142857142857...
+        #expect(result.seconds == 0, "1 / 7 should equal 0 seconds")
+        let expectedAtto = UInt64((1.0 / 7.0) * Double(PrecisionTimeInterval.attosecondsPerSecond))
+        let tolerance: UInt64 = 10
+        #expect(result.attoseconds > expectedAtto - tolerance && result.attoseconds < expectedAtto + tolerance)
+    }
+
+    // MARK: - Sign Handling Tests
+
+    @Test("Positive / Positive = Positive")
+    func positiveDividedByPositive() {
+        let interval = PrecisionTimeInterval(seconds: 15, attoseconds: 0, sign: .positive)
+        let divisor = 3
+
+        let result = interval / divisor
+
+        #expect(result.sign == .positive, "Positive / positive should be positive")
+        #expect(result.seconds == 5)
+    }
+
+    @Test("Negative / Positive = Negative")
+    func negativeDividedByPositive() {
+        let interval = PrecisionTimeInterval(seconds: 15, attoseconds: 0, sign: .negative)
+        let divisor = 3
+
+        let result = interval / divisor
+
+        #expect(result.sign == .negative, "Negative / positive should be negative")
+        #expect(result.seconds == 5)
+    }
+
+    @Test("Positive / Negative = Negative")
+    func positiveDividedByNegative() {
+        let interval = PrecisionTimeInterval(seconds: 15, attoseconds: 0, sign: .positive)
+        let divisor = -3
+
+        let result = interval / divisor
+
+        #expect(result.sign == .negative, "Positive / negative should be negative")
+        #expect(result.seconds == 5)
+    }
+
+    @Test("Negative / Negative = Positive")
+    func negativeDividedByNegative() {
+        let interval = PrecisionTimeInterval(seconds: 15, attoseconds: 0, sign: .negative)
+        let divisor = -3
+
+        let result = interval / divisor
+
+        #expect(result.sign == .positive, "Negative / negative should be positive")
+        #expect(result.seconds == 5)
+    }
+
+    // MARK: - Interval Division Tests
+
+    @Test("Divide interval by interval")
+    func divideIntervalByInterval() {
+        let interval1 = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let interval2 = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
+
+        let result = interval1 / interval2
+
+        #expect(result.seconds == 5, "10s / 2s should equal 5")
+        #expect(result.attoseconds == 0)
+        #expect(result.sign == .positive)
+    }
+
+    @Test("Divide interval by interval with attoseconds")
+    func divideIntervalByIntervalWithAttoseconds() {
+        // 1.5 / 0.5 = 3
+        let interval1 = PrecisionTimeInterval(seconds: 1, attoseconds: 500_000_000_000_000_000, sign: .positive)
+        let interval2 = PrecisionTimeInterval(seconds: 0, attoseconds: 500_000_000_000_000_000, sign: .positive)
+
+        let result = interval1 / interval2
+
+        #expect(result.seconds == 3, "1.5s / 0.5s should equal 3")
+        #expect(result.attoseconds == 0)
+    }
+
+    @Test("Divide interval by interval fractional result")
+    func divideIntervalByIntervalFractional() {
+        // 5 / 2 = 2.5
+        let interval1 = PrecisionTimeInterval(seconds: 5, attoseconds: 0, sign: .positive)
+        let interval2 = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
+
+        let result = interval1 / interval2
+
+        #expect(result.seconds == 2, "5s / 2s should equal 2 seconds")
+        // Check that the fractional part is approximately 0.5 seconds
+        let expectedAtto: UInt64 = 500_000_000_000_000_000
+        let tolerance: UInt64 = 100_000_000_000_000_000 // 0.1 second tolerance for interval division
+        #expect(result.attoseconds > expectedAtto - tolerance && result.attoseconds < expectedAtto + tolerance, "5s / 2s should have approximately 0.5 in attoseconds")
+    }
+
+    // MARK: - Compound Assignment Tests
+
+    @Test("Compound assignment division with integer")
+    func compoundAssignmentInteger() {
+        var interval = PrecisionTimeInterval(seconds: 9, attoseconds: 0, sign: .positive)
+        interval /= 3
+
+        #expect(interval.seconds == 3, "9 /= 3 should equal 3")
+        #expect(interval.attoseconds == 0)
+    }
+
+    @Test("Compound assignment division with floating point")
+    func compoundAssignmentFloatingPoint() {
+        var interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        interval /= 2.0
+
+        #expect(interval.seconds == 5, "10 /= 2.0 should equal 5")
+        #expect(interval.attoseconds == 0)
+    }
+
+    // MARK: - Large Number Tests
+
+    @Test("Divide large numbers")
+    func divideLargeNumbers() {
+        let interval = PrecisionTimeInterval(seconds: 1_000_000, attoseconds: 0, sign: .positive)
+        let divisor = 3
+
+        let result = interval / divisor
+
+        #expect(result.seconds == 333_333, "1000000 / 3 should equal 333333 seconds")
+        // Check that the fractional part is approximately 0.333... seconds
+        let expectedAtto = UInt64((1.0 / 3.0) * Double(PrecisionTimeInterval.attosecondsPerSecond))
+        let tolerance: UInt64 = 100_000
+        #expect(result.attoseconds > expectedAtto - tolerance && result.attoseconds < expectedAtto + tolerance)
+    }
+
+    // MARK: - Reciprocal Tests
+
+    @Test("Division and multiplication are inverse operations")
+    func divisionMultiplicationInverse() {
+        let original = PrecisionTimeInterval(seconds: 100, attoseconds: 0, sign: .positive)
+        let divisor = 7
+
+        let divided = original / divisor
+        let multiplied = divided * PrecisionTimeInterval(seconds: UInt64(divisor), attoseconds: 0, sign: .positive)
+
+        // Should be close to original (within rounding error)
+        // Due to precision loss in division, we allow the result to be within 1 second
+        let secondsDiff = multiplied.seconds > original.seconds
+            ? multiplied.seconds - original.seconds
+            : original.seconds - multiplied.seconds
+        #expect(secondsDiff <= 1, "Seconds should be within 1 of original")
+    }
+
+    @Test("Interval division sign handling")
+    func intervalDivisionSigns() {
+        let positive = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
+        let negative = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .negative)
+
+        let result1 = positive / positive
+        #expect(result1.sign == .positive, "positive / positive should be positive")
+
+        let result2 = positive / negative
+        #expect(result2.sign == .negative, "positive / negative should be negative")
+
+        let result3 = negative / positive
+        #expect(result3.sign == .negative, "negative / positive should be negative")
+
+        let result4 = negative / negative
+        #expect(result4.sign == .positive, "negative / negative should be positive")
+    }
+}

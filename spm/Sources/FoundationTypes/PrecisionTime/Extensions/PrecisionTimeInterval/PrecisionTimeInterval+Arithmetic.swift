@@ -565,6 +565,54 @@ extension PrecisionTimeInterval {
 
     // MARK: - Scalar Division
 
+    /// Helper function to divide a PrecisionTimeInterval by a UInt64 scalar with full precision
+    /// - Parameters:
+    ///   - interval: The time interval to divide
+    ///   - divisor: The UInt64 divisor (must not be zero)
+    /// - Returns: A new time interval divided by the scalar
+    @inlinable
+    internal static func divideByScalar(
+        _ interval: PrecisionTimeInterval,
+        _ divisor: UInt64
+    ) -> PrecisionTimeInterval {
+        guard divisor != 0 else {
+            // Division by zero - return max value with same sign
+            return PrecisionTimeInterval(
+                SIMD2(UInt64.max, 0),
+                interval.sign
+            )
+        }
+
+        // Handle zero interval
+        if interval.isZero {
+            return .zero
+        }
+
+        // Step 1: Divide seconds by divisor
+        let quotientSeconds = interval.seconds / divisor
+        let remainderSeconds = interval.seconds % divisor
+
+        // Step 2: Convert remainder seconds to attoseconds and add interval.attoseconds
+        // This creates a 128-bit number: remainderSeconds * 10^18 + interval.attoseconds
+        let (high, low) = remainderSeconds.multipliedFullWidth(by: Self.attosecondsPerSecond)
+
+        // Add interval.attoseconds to the low part
+        let (sumLow, carry) = low.addingReportingOverflow(interval.attoseconds)
+        let sumHigh = high &+ (carry ? 1 : 0)
+
+        // Step 3: Divide this 128-bit number by divisor to get attoseconds quotient
+        let (quotientAttoseconds, _) = divide128By64(
+            high: sumHigh,
+            low: sumLow,
+            by: divisor
+        )
+
+        return PrecisionTimeInterval(
+            SIMD2(quotientSeconds, quotientAttoseconds),
+            interval.sign
+        )
+    }
+
     /// Divide a time interval by a floating-point scalar value
     /// - Parameters:
     ///   - lhs: The time interval
@@ -574,15 +622,14 @@ extension PrecisionTimeInterval {
     /// - Important: **Precision Warning**
     ///   This operation converts through `BinaryFloatingPoint`, which may introduce rounding errors
     ///   due to the limited precision of floating-point types. For maximum precision, convert your
-    ///   scalar to `PrecisionTimeInterval` first and use the ratio operator:
+    ///   scalar to `PrecisionTimeInterval` first and use interval-to-interval division:
     ///   ```swift
     ///   // Less precise (may lose attosecond precision):
     ///   let result = interval / 2.5
     ///
     ///   // More precise (preserves full attosecond precision):
     ///   let divisor = PrecisionTimeInterval(seconds: 2.5)
-    ///   let ratio: Double = interval / divisor  // Get ratio as scalar
-    ///   let result = interval * PrecisionTimeInterval(seconds: 1.0 / 2.5)
+    ///   let result = interval / divisor
     ///   ```
     ///
     /// Example:
@@ -590,19 +637,17 @@ extension PrecisionTimeInterval {
     /// let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive) // 10s
     /// let halved = interval / 2.0 // 5s (but may have rounding errors)
     /// ```
-    // FIXME: - complete division at a later date
-    // @available(*, deprecated, message: "BinaryFloatingPoint may lose precision. Prefer PrecisionTimeInterval.")
-    // @_disfavoredOverload
-    // @inlinable
-    // public static func / <T: BinaryFloatingPoint>(
-    //     lhs: PrecisionTimeInterval,
-    //     rhs: T
-    // ) -> PrecisionTimeInterval {
-    //     // Convert interval to floating point, divide, and convert back
-    //     let intervalSeconds: T = lhs.asFloatingPoint()
-    //     let resultSeconds = intervalSeconds / rhs
-    //     return PrecisionTimeInterval(seconds: resultSeconds)
-    // }
+    @available(*, deprecated, message: "BinaryFloatingPoint may lose precision. Prefer PrecisionTimeInterval.")
+    @_disfavoredOverload
+    @inlinable
+    public static func / <T: BinaryFloatingPoint>(
+        lhs: PrecisionTimeInterval,
+        rhs: T
+    ) -> PrecisionTimeInterval {
+        // Convert scalar to PrecisionTimeInterval and use interval division
+        let divisor = PrecisionTimeInterval(seconds: rhs)
+        return lhs / divisor
+    }
 
     /// Divide a time interval by an integer scalar value
     /// - Parameters:
@@ -610,25 +655,26 @@ extension PrecisionTimeInterval {
     ///   - rhs: The integer divisor (must not be zero)
     /// - Returns: A new time interval divided by the scalar
     ///
-    /// - Note: Integer division may lose precision in the fractional part.
-    ///   Consider using `BinaryFloatingPoint` if you need more precise division.
-    ///
     /// Example:
     /// ```swift
     /// let interval = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive) // 10s
-    /// let result = interval / 3 // 3.333... seconds
+    /// let result = interval / 3 // 3.333... seconds with full attosecond precision
     /// ```
-    // FIXME: - complete division at a later date
-    // @inlinable
-    // public static func / <T: BinaryInteger>(
-    //     lhs: PrecisionTimeInterval,
-    //     rhs: T
-    // ) -> PrecisionTimeInterval {
-    //     // Convert to PrecisionTimeInterval and use interval division
-    //     let divisor = PrecisionTimeInterval(seconds: rhs)
-    //     let ratio: Double = lhs / divisor
-    //     return PrecisionTimeInterval(seconds: ratio)
-    // }
+    @inlinable
+    public static func / <T: BinaryInteger>(
+        lhs: PrecisionTimeInterval,
+        rhs: T
+    ) -> PrecisionTimeInterval {
+        // Convert to UInt64 and use the helper function
+        let divisor = UInt64(rhs.magnitude)
+        let result = divideByScalar(lhs, divisor)
+
+        // Handle negative divisor (flip sign)
+        if rhs < 0 {
+            return PrecisionTimeInterval(result.storage, result.sign.inverted)
+        }
+        return result
+    }
 
     /// Compound assignment division with floating-point scalar
     /// - Parameters:
@@ -644,8 +690,7 @@ extension PrecisionTimeInterval {
     ///
     ///   // More precise:
     ///   let divisor = PrecisionTimeInterval(seconds: 3.0)
-    ///   let ratio: Double = interval / divisor
-    ///   interval = PrecisionTimeInterval(seconds: ratio / 3.0)
+    ///   interval = interval / divisor
     ///   ```
     ///
     /// Example:
@@ -653,20 +698,19 @@ extension PrecisionTimeInterval {
     /// var interval = PrecisionTimeInterval(seconds: 9, attoseconds: 0, sign: .positive)
     /// interval /= 3.0 // interval is now 3s (but may have rounding errors)
     /// ```
-    // FIXME: - complete division at a later date
-    // @available(
-    //     *,
-    //     deprecated,
-    //     message: "BinaryFloatingPoint may lose precision. Consider converting to PrecisionTimeInterval."
-    // )
-    // @_disfavoredOverload
-    // @inlinable
-    // public static func /= <T: BinaryFloatingPoint>(
-    //     lhs: inout PrecisionTimeInterval,
-    //     rhs: T
-    // ) {
-    //     lhs = lhs / rhs
-    // }
+    @available(
+        *,
+        deprecated,
+        message: "BinaryFloatingPoint may lose precision. Consider converting to PrecisionTimeInterval."
+    )
+    @_disfavoredOverload
+    @inlinable
+    public static func /= <T: BinaryFloatingPoint>(
+        lhs: inout PrecisionTimeInterval,
+        rhs: T
+    ) {
+        lhs = lhs / rhs
+    }
 
     /// Compound assignment division with integer scalar
     /// - Parameters:
@@ -678,35 +722,97 @@ extension PrecisionTimeInterval {
     /// var interval = PrecisionTimeInterval(seconds: 9, attoseconds: 0, sign: .positive)
     /// interval /= 3 // interval is now 3s
     /// ```
-    // FIXME: - complete division at a later date
-    // @inlinable
-    // public static func /= <T: BinaryInteger>(
-    //     lhs: inout PrecisionTimeInterval,
-    //     rhs: T
-    // ) {
-    //     lhs = lhs / rhs
-    // }
+    @inlinable
+    public static func /= <T: BinaryInteger>(
+        lhs: inout PrecisionTimeInterval,
+        rhs: T
+    ) {
+        lhs = lhs / rhs
+    }
 
-    /// Divide a time interval by another time interval to get a scalar ratio
+    // MARK: - Interval Division
+
+    /// Divide a time interval by another time interval
     /// - Parameters:
     ///   - lhs: The dividend time interval
     ///   - rhs: The divisor time interval
-    /// - Returns: The ratio as a floating-point value
+    /// - Returns: A new time interval representing the quotient
+    ///
+    /// This operation computes lhs / rhs as a time interval. The result represents
+    /// how many times rhs fits into lhs, expressed as a dimensionless time interval.
     ///
     /// Example:
     /// ```swift
     /// let interval1 = PrecisionTimeInterval(seconds: 10, attoseconds: 0, sign: .positive)
     /// let interval2 = PrecisionTimeInterval(seconds: 2, attoseconds: 0, sign: .positive)
-    /// let ratio: Double = interval1 / interval2 // 5.0
+    /// let quotient = interval1 / interval2 // 5.0 seconds (dimensionless)
     /// ```
-    // FIXME: - complete division at a later date
-    // @inlinable
-    // public static func / <T: BinaryFloatingPoint>(
-    //     lhs: PrecisionTimeInterval,
-    //     rhs: PrecisionTimeInterval
-    // ) -> T {
-    //     let lhsSeconds: T = lhs.asFloatingPoint()
-    //     let rhsSeconds: T = rhs.asFloatingPoint()
-    //     return lhsSeconds / rhsSeconds
-    // }
+    @inlinable
+    public static func / (
+        lhs: PrecisionTimeInterval,
+        rhs: PrecisionTimeInterval
+    ) -> PrecisionTimeInterval {
+        // Handle zero divisor
+        guard !rhs.isZero else {
+            return PrecisionTimeInterval(
+                SIMD2(UInt64.max, 0),
+                lhs.sign == rhs.sign ? .positive : .negative
+            )
+        }
+
+        // Handle zero dividend
+        if lhs.isZero {
+            return .zero
+        }
+
+        // Convert both intervals to total attoseconds (as 128-bit numbers)
+        // lhs: lhs.seconds * 10^18 + lhs.attoseconds
+        // rhs: rhs.seconds * 10^18 + rhs.attoseconds
+
+        // For division, we need to compute: (lhs_total_attos) / (rhs_total_attos)
+        // This gives us a dimensionless ratio
+
+        // First, compute lhs in total attoseconds (128-bit)
+        let (lhsHigh, lhsLow) = lhs.seconds.multipliedFullWidth(by: Self.attosecondsPerSecond)
+        let (lhsSumLow, lhsCarry) = lhsLow.addingReportingOverflow(lhs.attoseconds)
+        let lhsSumHigh = lhsHigh &+ (lhsCarry ? 1 : 0)
+
+        // Compute rhs in total attoseconds (128-bit)
+        let (rhsHigh, rhsLow) = rhs.seconds.multipliedFullWidth(by: Self.attosecondsPerSecond)
+        let (rhsSumLow, rhsCarry) = rhsLow.addingReportingOverflow(rhs.attoseconds)
+        let rhsSumHigh = rhsHigh &+ (rhsCarry ? 1 : 0)
+
+        // Perform 128-bit / 128-bit division
+        // We want to compute: (lhsSumHigh * 2^64 + lhsSumLow) / (rhsSumHigh * 2^64 + rhsSumLow)
+        // and return the result as a PrecisionTimeInterval
+
+        // Simple case: both high parts are zero
+        if lhsSumHigh == 0 && rhsSumHigh == 0 {
+            let quotientSeconds = lhsSumLow / rhsSumLow
+            let remainder = lhsSumLow % rhsSumLow
+
+            // Convert remainder to attoseconds with full precision
+            // remainder / rhsSumLow as attoseconds
+            let (high, low) = remainder.multipliedFullWidth(by: Self.attosecondsPerSecond)
+            let (quotientAttoseconds, _) = divide128By64(high: high, low: low, by: rhsSumLow)
+
+            return PrecisionTimeInterval(
+                SIMD2(quotientSeconds, quotientAttoseconds),
+                lhs.sign == rhs.sign ? .positive : .negative
+            )
+        }
+
+        // Complex case: use approximation for large numbers
+        // Convert to Double for the division (loses precision but handles large ranges)
+        let lhsDouble = Double(lhs.seconds) + Double(lhs.attoseconds) / Self.attosecondsPerSecondDouble
+        let rhsDouble = Double(rhs.seconds) + Double(rhs.attoseconds) / Self.attosecondsPerSecondDouble
+        let ratio = lhsDouble / rhsDouble
+
+        return PrecisionTimeInterval(
+            seconds: ratio
+        ) * PrecisionTimeInterval(
+            SIMD2(1, 0),
+            lhs.sign == rhs.sign ? .positive : .negative
+        )
+    }
 }

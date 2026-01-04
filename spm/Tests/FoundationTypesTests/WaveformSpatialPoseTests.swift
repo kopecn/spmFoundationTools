@@ -160,31 +160,29 @@ struct WaveformSpatialPoseComputedPropertiesTests {
         #expect(waveform.duration == .zero)
     }
 
-    // FIXME: samplingFrequency and nyquistFrequency not yet implemented for WaveformSpatialPose
-    // @Test("Sampling frequency calculation")
-    // func samplingFrequency() {
-    //     let waveform = FloatWaveformSpatialPose(
-    //         positions: [FloatPosition.origin],
-    //         quaternions: [FloatQuaternion.identity],
-    //         dt: .oneMillisecond
-    //     )
-    //     let expectedFrequency: Float = 1.0 / 0.001
-    //
-    //     #expect(waveform.samplingFrequency == expectedFrequency)
-    // }
+    @Test("Sampling frequency calculation")
+    func samplingFrequency() {
+        let waveform = FloatWaveformSpatialPose(
+            positions: [FloatPosition.origin],
+            quaternions: [FloatQuaternion.identity],
+            dt: .oneMillisecond
+        )
+        let expectedFrequency: Float = 1000.0
+    
+        #expect(waveform.samplingFrequencyInHz() == expectedFrequency)
+    }
 
-    // FIXME: samplingFrequency and nyquistFrequency not yet implemented for WaveformSpatialPose
-    // @Test("Nyquist frequency calculation")
-    // func nyquistFrequency() {
-    //     let waveform = DoubleWaveformSpatialPose(
-    //         positions: [DoublePosition.origin],
-    //         quaternions: [DoubleQuaternion.identity],
-    //         dt: PrecisionTimeInterval(seconds: 0.002)
-    //     )
-    //     let expectedNyquist = (1.0 / 0.002) / 2.0
-    //
-    //     #expect(waveform.nyquistFrequency == expectedNyquist)
-    // }
+    @Test("Nyquist frequency calculation")
+    func nyquistFrequency() {
+        let waveform = DoubleWaveformSpatialPose(
+            positions: [DoublePosition.origin],
+            quaternions: [DoubleQuaternion.identity],
+            dt: PrecisionTimeInterval(seconds: 0.002)
+        )
+        let expectedNyquist = (1.0 / 0.002) / 2.0
+    
+        #expect(waveform.nyquistFrequencyInHz() == expectedNyquist)
+    }
 
     @Test("Sample count with equal arrays")
     func sampleCountEqualArrays() {
@@ -728,8 +726,7 @@ struct WaveformSpatialPoseEdgeCasesTests {
         )
 
         #expect(waveform.dt.secondsAsFloat == dt)
-        // FIXME: samplingFrequency not yet implemented for WaveformSpatialPose
-        // #expect(waveform.samplingFrequency == 1.0 / dt)
+        #expect(waveform.samplingFrequencyInHz() == 1.0 / dt)
         #expect(waveform.duration.secondsAsFloat == dt)
     }
 
@@ -743,8 +740,7 @@ struct WaveformSpatialPoseEdgeCasesTests {
         )
 
         #expect(waveform.dt.secondsAsDouble == dt)
-        // FIXME: samplingFrequency not yet implemented for WaveformSpatialPose
-        // #expect(waveform.samplingFrequency == 1.0 / dt)
+        #expect(waveform.samplingFrequencyInHz() == 1.0 / dt)
     }
 
     @Test("Large dataset performance", .timeLimit(.minutes(1)))

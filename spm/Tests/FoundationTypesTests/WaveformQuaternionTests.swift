@@ -118,23 +118,21 @@ struct WaveformQuaternionComputedPropertiesTests {
         #expect(waveform.duration == .zero)
     }
 
-    // FIXME: samplingFrequency and nyquistFrequency are not yet implemented
-    // @Test("Sampling frequency calculation")
-    // func samplingFrequencyCalculation() {
-    //     let dt: Double = 0.01  // 10ms
-    //     let waveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dtSeconds: dt)
-    //
-    //     #expect(abs(waveform.samplingFrequency - 100.0) < 1e-10)  // Use epsilon for safety
-    // }
+    @Test("Sampling frequency calculation")
+    func samplingFrequencyCalculation() {
+        let dt: Double = 0.01  // 10ms
+        let waveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity], dtSeconds: dt)
+    
+        #expect(abs(waveform.samplingFrequencyInHz() - 100.0) < 1e-10)  // Use epsilon for safety
+    }
 
-    // FIXME: samplingFrequency and nyquistFrequency are not yet implemented
-    // @Test("Nyquist frequency calculation")
-    // func nyquistFrequencyCalculation() {
-    //     let dt: Float = 0.002  // 2ms, 500 Hz sampling
-    //     let waveform = FloatWaveformQuaternion(values: [FloatQuaternion.identity], dtSeconds: dt)
-    //
-    //     #expect(abs(waveform.nyquistFrequency - 250.0) < 2e-5)  // Use epsilon for safety
-    // }
+    @Test("Nyquist frequency calculation")
+    func nyquistFrequencyCalculation() {
+        let dt: Float = 0.002  // 2ms, 500 Hz sampling
+        let waveform = FloatWaveformQuaternion(values: [FloatQuaternion.identity], dtSeconds: dt)
+    
+        #expect(abs(waveform.nyquistFrequencyInHz() - 250.0) < 2e-5)  // Use epsilon for safety
+    }
 
     @Test("Sample count")
     func sampleCount() {
@@ -583,13 +581,12 @@ struct WaveformQuaternionEdgeCasesTests {
 
     @Test("Very small dt")
     func verySmallDt() {
-        let dt: Float = 1e-9  // 1 nanosecond
-        let waveform = FloatWaveformQuaternion(values: [FloatQuaternion.identity, FloatQuaternion.zero], dt: PrecisionTimeInterval(seconds: TimeInterval(dt)))
+        let dt: Double = 1e-9  // 1 nanosecond
+        let waveform = DoubleWaveformQuaternion(values: [DoubleQuaternion.identity, DoubleQuaternion.zero], dt: PrecisionTimeInterval(seconds: TimeInterval(dt)))
 
-        #expect(waveform.dt.secondsAsFloat == dt)
-        #expect(waveform.duration.secondsAsFloat == dt)
-        // FIXME: samplingFrequency not yet implemented for WaveformQuaternion
-        // #expect(abs(waveform.samplingFrequency - 1e9) < 1e-6)  // Use epsilon comparison
+        #expect(waveform.dt.secondsAsDouble == dt)
+        #expect(waveform.duration.secondsAsDouble == dt)
+        #expect(abs(waveform.samplingFrequencyInHz() - 1e9) < 1e-6)  // Use epsilon comparison
     }
 
     @Test("Very large dt")
@@ -599,8 +596,7 @@ struct WaveformQuaternionEdgeCasesTests {
 
         #expect(waveform.dt.secondsAsDouble == dt)
         #expect(waveform.duration.secondsAsDouble == dt)
-        // FIXME: samplingFrequency not yet implemented for WaveformQuaternion
-        // #expect(abs(waveform.samplingFrequency - (1.0 / 86400.0)) < 1e-10)
+        #expect(abs(waveform.samplingFrequencyInHz() - (1.0 / 86400.0)) < 1e-10)
     }
 
     @Test("Large number of samples")

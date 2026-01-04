@@ -79,23 +79,19 @@ struct Waveform1DComputedPropertiesTests {
         #expect(waveform.duration == .zero)
     }
 
-    // FIXME: --
-    // @Test("Sampling frequency calculation")
-    // func samplingFrequency() {
-    //     let waveform = Waveform1D<Double>(values: [1.0, 2.0, 3.0], dtSeconds: 0.001)
-    //     let expectedFrequency = 1.0 / 0.001
+    @Test("Sampling frequency calculation")
+    func samplingFrequency() {
+        let waveform = Waveform1D<Double>(values: [1.0, 2.0, 3.0], dtSeconds: 0.001)
+        let expectedFrequency = 1.0 / 0.001
+        #expect(waveform.samplingFrequencyInHz() == expectedFrequency)
+    }
 
-    //     #expect(waveform.samplingFrequency() == expectedFrequency)
-    // }
-
-    // FIXME: --
-    // @Test("Nyquist frequency calculation")
-    // func nyquistFrequency() {
-    //     let waveform = Waveform1D<Double>(values: [1.0, 2.0, 3.0], dtSeconds: 0.002)
-    //     let expectedNyquist = (1.0 / 0.002) / 2.0
-
-    //     #expect(waveform.nyquistFrequency == expectedNyquist)
-    // }
+    @Test("Nyquist frequency calculation")
+    func nyquistFrequency() {
+        let waveform = Waveform1D<Double>(values: [1.0, 2.0, 3.0], dtSeconds: 0.002)
+        let expectedNyquist = (1.0 / 0.002) / 2.0
+        #expect(waveform.nyquistFrequencyInHz() == expectedNyquist)
+    }
 
     @Test("Sample count")
     func sampleCount() {

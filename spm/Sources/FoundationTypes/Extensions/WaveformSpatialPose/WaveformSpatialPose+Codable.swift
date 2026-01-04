@@ -129,7 +129,6 @@ extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatin
     ///   - hasHeader: Whether the CSV file has a header row (default: true)
     /// - Returns: A WaveformSpatialPose created from the CSV data
     /// - Throws: File reading errors or parsing errors
-    // FIXME: - need to add handling for reading the header, and determining if fullPrecision then handle accordingly
     public static func importFromCSV(
         from url: URL,
         hasHeader: Bool = true
@@ -141,54 +140,94 @@ extension WaveformSpatialPose where T: LosslessStringConvertible & BinaryFloatin
             throw WaveformCodingError.emptyCSVFile
         }
 
-        let dataLines = hasHeader ? Array(lines.dropFirst()) : lines
+        // Detect if this is a full precision CSV by checking the header
+        let isFullPrecision: Bool
+        let dataLines: [String]
+
+        if hasHeader {
+            let header = lines[0].lowercased()
+            isFullPrecision = header.contains("seconds") && header.contains("attoseconds")
+            dataLines = Array(lines.dropFirst())
+        } else {
+            // Without a header, we need to guess based on the number of columns
+            let firstLine = lines[0].components(separatedBy: ",")
+            isFullPrecision = firstLine.count >= 9
+            dataLines = lines
+        }
+
         var positions: [Position<T>] = []
         var quaternions: [Quaternion<T>] = []
-        var timestamps: [Double] = []
+        var timeIntervals: [PrecisionTimeInterval] = []
 
         for line in dataLines {
             let components = line.components(separatedBy: ",")
-            guard components.count >= 8 else {
-                throw WaveformCodingError.invalidCSVFormat(
-                    expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w"
-                )
-            }
 
-            guard let timestamp = Double(components[0]) else {
-                throw WaveformCodingError.invalidCSVFormat(
-                    expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w"
-                )
-            }
+            if isFullPrecision {
+                // Format: seconds,attoseconds,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w
+                guard components.count >= 9 else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "seconds,attoseconds,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
 
-            // Parse T values using LosslessStringConvertible
-            guard let posX = T(components[1].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let posY = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let posZ = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let quatX = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let quatY = T(components[5].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let quatZ = T(components[6].trimmingCharacters(in: .whitespacesAndNewlines)),
-                let quatW = T(components[7].trimmingCharacters(in: .whitespacesAndNewlines))
-            else {
-                throw WaveformCodingError.invalidCSVFormat(
-                    expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w"
-                )
-            }
+                guard let seconds = UInt64(components[0].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let attoseconds = UInt64(components[1].trimmingCharacters(in: .whitespacesAndNewlines))
+                else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "seconds,attoseconds,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
 
-            timestamps.append(timestamp)
-            positions.append(Position<T>(x: posX, y: posY, z: posZ))
-            quaternions.append(Quaternion<T>(x: quatX, y: quatY, z: quatZ, w: quatW))
+                let time = PrecisionTimeInterval(seconds: seconds, attoseconds: attoseconds, sign: .positive)
+                timeIntervals.append(time)
+
+                // Parse position and quaternion values
+                guard let posX = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let posY = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let posZ = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatX = T(components[5].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatY = T(components[6].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatZ = T(components[7].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatW = T(components[8].trimmingCharacters(in: .whitespacesAndNewlines))
+                else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "seconds,attoseconds,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
+
+                positions.append(Position<T>(x: posX, y: posY, z: posZ))
+                quaternions.append(Quaternion<T>(x: quatX, y: quatY, z: quatZ, w: quatW))
+            } else {
+                // Format: timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w
+                guard components.count >= 8 else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
+
+                guard let timestamp = Double(components[0].trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
+
+                let time = PrecisionTimeInterval(seconds: timestamp)
+                timeIntervals.append(time)
+
+                // Parse position and quaternion values
+                guard let posX = T(components[1].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let posY = T(components[2].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let posZ = T(components[3].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatX = T(components[4].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatY = T(components[5].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatZ = T(components[6].trimmingCharacters(in: .whitespacesAndNewlines)),
+                      let quatW = T(components[7].trimmingCharacters(in: .whitespacesAndNewlines))
+                else {
+                    throw WaveformCodingError.invalidCSVFormat(expected: "timestamp,pos_x,pos_y,pos_z,quat_x,quat_y,quat_z,quat_w")
+                }
+
+                positions.append(Position<T>(x: posX, y: posY, z: posZ))
+                quaternions.append(Quaternion<T>(x: quatX, y: quatY, z: quatZ, w: quatW))
+            }
         }
 
-        guard let firstTimestamp = timestamps.first,
-            timestamps.count > 1
-        else {
+        guard !timeIntervals.isEmpty, timeIntervals.count > 1 else {
             throw WaveformCodingError.insufficientData
         }
 
         // Calculate dt from the difference between first two timestamps
-        let dtSeconds = timestamps.count > 1 ? timestamps[1] - timestamps[0] : 1.0
-        let dt = PrecisionTimeInterval(seconds: dtSeconds)
-        let t0 = PrecisionTimestamp(seconds: UInt64(firstTimestamp))
+        let dt = timeIntervals.count > 1 ? timeIntervals[1] - timeIntervals[0] : .oneSecond
+        let t0 = PrecisionTimestamp(interval: timeIntervals[0])
 
         return WaveformSpatialPose<T>(positions: positions, quaternions: quaternions, dt: dt, t0: t0)
     }

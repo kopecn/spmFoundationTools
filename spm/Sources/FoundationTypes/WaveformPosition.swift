@@ -73,26 +73,21 @@ public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: 
         return dt * (values.count - 1)
     }
 
-    // FIXME: -- 
-    // /// Get the total duration of the waveform in seconds as the specified floating point type
-    // public func durationInSeconds<U: BinaryFloatingPoint>() -> U {
-    //     guard values.count > 1 else { return 0 }
-    //     let dtSeconds: U = dt.asFloatingPoint()
-    //     return U(values.count - 1) * dtSeconds
-    // }
+    /// Get the total duration of the waveform in seconds as the specified floating point type
+    public func durationInSeconds<U: BinaryFloatingPoint>() -> U {
+        guard values.count > 1 else { return 0 }
+        return U(Double(values.count - 1) * dt.secondsAsDouble)
+    }
 
-    // FIXME: -- 
-    // /// Get the sampling frequency (Hz) in the specified floating point type
-    // public func samplingFrequencyInHz<U: BinaryFloatingPoint>() -> U {
-    //     let dtSeconds: U = dt.asFloatingPoint()
-    //     return 1.0 / dtSeconds
-    // }
+    /// Get the sampling frequency (Hz) in the specified floating point type
+    public func samplingFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+        return U(1.0 / dt.secondsAsDouble)
+    }
 
-    // FIXME: -- 
-    // /// Get the Nyquist frequency (Hz) in the specified floating point type
-    // public func nyquistFrequencyInHz<U: BinaryFloatingPoint>() -> U {
-    //     return samplingFrequencyInHz() / 2.0
-    // }
+    /// Get the Nyquist frequency (Hz) in the specified floating point type
+    public func nyquistFrequencyInHz<U: BinaryFloatingPoint>() -> U {
+        return samplingFrequencyInHz() / 2.0
+    }
 
     /// Get the number of samples
     public var sampleCount: Int {
