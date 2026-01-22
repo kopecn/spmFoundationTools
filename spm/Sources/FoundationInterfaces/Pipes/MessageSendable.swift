@@ -16,20 +16,32 @@ public protocol MessageSendable: AnyObject, Sendable {
     /// Sends data to the remote endpoint.
     ///
     /// - Parameters:
+    ///   - id: The target client identifier, or nil to broadcast to all.
     ///   - data: The data to send.
     ///   - priority: Optional priority for queue ordering. Higher values = higher priority.
     ///   - queueIfDisconnected: If true, queues the data for later delivery when disconnected.
     /// - Returns: Whether the data was sent or queued successfully.
     @discardableResult
-    func send(_ data: Data, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool
+    func send(
+        to id: (any Identifiable)?,
+        _ data: Data, 
+        _ priority: Int, 
+        _ queueIfDisconnected: Bool
+    ) -> Bool
 
     /// Sends a string message to the remote endpoint.
     ///
     /// - Parameters:
+    ///   - id: The target client identifier, or nil to broadcast to all.
     ///   - message: The string message to send.
     ///   - priority: Optional priority for queue ordering. Higher values = higher priority.
     ///   - queueIfDisconnected: If true, queues the message for later delivery when disconnected.
     /// - Returns: Whether the message was sent or queued successfully.
     @discardableResult
-    func send(_ message: String, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool
+    func send(
+        to id: (any Identifiable)?,
+        _ message: String, 
+        _ priority: Int, 
+        _ queueIfDisconnected: Bool
+    ) -> Bool
 }
