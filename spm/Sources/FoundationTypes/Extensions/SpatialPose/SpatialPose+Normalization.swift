@@ -1,6 +1,8 @@
 import Foundation
 import simd
 
+import FoundationInterfaces
+
 // MARK: - Normalization Conformance
 
 extension SpatialPose: NormalizableFloat where T == Float {

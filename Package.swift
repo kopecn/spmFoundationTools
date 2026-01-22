@@ -24,6 +24,10 @@ let package = Package(
             name: "FoundationCommon",
             targets: ["FoundationCommon"]
         ),
+        .library(
+            name: "FoundationInterfaces",
+            targets: ["FoundationInterfaces"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -36,6 +40,7 @@ let package = Package(
             dependencies: [
                 "FoundationCommon",
                 "FoundationTypes",
+                "FoundationInterfaces",
                 .product(name: "Logging", package: "swift-log")
             ],
             path: "spm/Sources/FoundationTools"
@@ -43,6 +48,10 @@ let package = Package(
         .target(
             name: "FoundationCommon",
             path: "spm/Sources/FoundationCommon"
+        ),
+        .target(
+            name: "FoundationInterfaces",
+            path: "spm/Sources/FoundationInterfaces"
         ),
         .target(
             name: "FoundationTypes",
