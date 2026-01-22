@@ -1,4 +1,4 @@
-.PHONY: help clean build test test-netcat-client-only test-netcat-server-only format tag version checkGitClean mermaid bump-patch bump-minor bump-major release
+.PHONY: help clean build test format tag version checkGitClean mermaid bump-patch bump-minor bump-major release
 
 .DEFAULT_GOAL := help
 
@@ -19,14 +19,8 @@ build:  ## Build the project in release mode
 run: ## Runs the UI demo for this package
 	swift run
 
-test:  ## Run tests (excluding netcat tests)
+test:  ## Run tests
 	swift test --no-parallel
-
-test-netcat-client-only:  ## Run only netcat client integration tests
-	RUN_NETCAT_CLIENT_TESTS=1 swift test --filter "connectClientToNetCat" --no-parallel
-
-test-netcat-server-only:  ## Run only netcat server integration tests
-	RUN_NETCAT_SERVER_TESTS=1 swift test --filter "connectServerToNetCat" --no-parallel
 
 update-packages: ## 
 	swift package update

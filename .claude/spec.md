@@ -15,7 +15,7 @@ Philosophy: KISS (Keep It Simple, Stupid)
 # Build the project (release mode)
 swift build -c release
 
-# Run all tests (excludes netcat tests by default)
+# Run all tests
 swift test --no-parallel
 
 # Run specific test targets
@@ -23,9 +23,6 @@ swift test --filter FoundationTypesTests
 swift test --filter FoundationToolsTests
 swift test --filter FoundationCommonTests
 
-# Run netcat integration tests (special cases)
-RUN_NETCAT_CLIENT_TESTS=1 swift test --filter "connectClientToNetCat" --no-parallel
-RUN_NETCAT_SERVER_TESTS=1 swift test --filter "connectServerToNetCat" --no-parallel
 ```
 
 ### Code Formatting
