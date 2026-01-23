@@ -21,4 +21,11 @@ public protocol MessageReceivable: AnyObject, Sendable {
     ///
     /// - Parameter handler: The handler to receive string messages, or nil to clear.
     func setStringMessageHandler(_ handler: (@Sendable (String) -> Void)?)
+
+    /// Handles an incoming message asynchronously.
+    ///
+    /// - Parameter message: The message to be handled, represented as a `String`.
+    func handleMessage(_ message: String) async
 }
+
+
