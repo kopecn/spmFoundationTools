@@ -56,6 +56,7 @@ let package = Package(
         .target(
             name: "FoundationTypes",
             dependencies: [
+                "FoundationInterfaces",
                 .product(name: "kvSIMD", package: "kvSIMD.swift")
             ],
             path: "spm/Sources/FoundationTypes"
