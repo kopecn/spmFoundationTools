@@ -33,7 +33,7 @@ public enum QueueStrategy: Sendable {
 ///
 /// - Note: Named pipes are created in the system temporary directory for
 ///   cross-platform compatibility (macOS and Linux).
-public final class NamedPipeChannel: MessageSendable, MessageReceivable, @unchecked Sendable {
+public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
 
     // MARK: - Types
 
