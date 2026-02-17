@@ -7,24 +7,6 @@ public struct PrecisionTimeInterval: Sendable {
     public var storage: SIMD2<UInt64>
     public var sign: NumericSign
 
-    // MARK: - Calibration Metadata
-
-    /// Frequency offset or systematic drift - deterministic deviation from nominal frequency
-    /// that accumulates linearly over time
-    public var frequencyOffset: FrequencyOffset?
-
-    /// Phase noise or short-term jitter - fast, random fluctuations in clock phase/edge timing
-    /// (high-frequency deviations around ideal clock edge)
-    public var phaseJitter: PhaseJitter?
-
-    /// Long-term wander or random walk - slow, stochastic variations in clock phase
-    /// that grow roughly as √t instead of linearly
-    public var wander: Wander?
-
-    /// Temperature or environmental drift - systematic frequency/phase changes from
-    /// environmental factors (requires external temperature waveform correlation)
-    public var temperatureDrift: TemperatureDrift?
-
     // MARK: - Constants
 
     /// Number of attoseconds in one second (1e18).
@@ -248,11 +230,11 @@ public struct PrecisionTimeInterval: Sendable {
     @inlinable
     public var secondsAsDouble: Double {
         get {
-            return Double(storage[0]) + Double(storage[1] % Self.attosecondsPerSecond) / Self.attosecondsPerSecondDouble
+            return (Double(storage[0]) + Double(storage[1] % Self.attosecondsPerSecond) / Self.attosecondsPerSecondDouble)
                 * (sign == .negative ? -1 : 1)
         }
         set {
-            Self.binaryFloatingPointToSimd(newValue,&self.storage, &self.sign)
+            Self.binaryFloatingPointToSimd(newValue, &self.storage, &self.sign)
         }
     }
 
@@ -260,10 +242,10 @@ public struct PrecisionTimeInterval: Sendable {
     @inlinable
     public var secondsAsFloat: Float {
         get {
-            return Float(storage[0]) + Float(
-                //ensure this stays under Double before converting to float
-                Double(storage[1] % Self.attosecondsPerSecond) / Self.attosecondsPerSecondDouble
-            ) * (sign == .negative ? -1 : 1)
+            return Float(
+                (Double(storage[0]) + Double(storage[1] % Self.attosecondsPerSecond) / Self.attosecondsPerSecondDouble)
+                    * (sign == .negative ? -1 : 1)
+            )
         }
         set {
             Self.binaryFloatingPointToSimd(newValue, &self.storage, &self.sign)

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(swift test:*)",
       "Bash(swift build:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

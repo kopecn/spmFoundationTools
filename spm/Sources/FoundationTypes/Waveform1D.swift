@@ -44,6 +44,7 @@ public struct Waveform1D<T: Numeric & Sendable>: Sendable {
         dt: PrecisionTimeInterval = .oneSecond,
         t0: PrecisionTimestamp? = nil
     ) {
+        precondition(dt > .zero, "dt must be greater than zero")
         self.values = values
         self.dt = dt
         self.t0 = t0

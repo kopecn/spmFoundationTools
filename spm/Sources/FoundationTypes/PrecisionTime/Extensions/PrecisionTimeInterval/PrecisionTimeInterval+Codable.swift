@@ -7,10 +7,6 @@ extension PrecisionTimeInterval: Codable {
         case seconds
         case attoseconds
         case sign
-        case frequencyOffset
-        case phaseJitter
-        case wander
-        case temperatureDrift
     }
 
     public init(from decoder: Decoder) throws {
@@ -22,12 +18,6 @@ extension PrecisionTimeInterval: Codable {
         self.storage = SIMD2(seconds, attoseconds)
         self.sign = sign
 
-        // Decode calibration metadata (all optional)
-        self.frequencyOffset = try container.decodeIfPresent(FrequencyOffset.self, forKey: .frequencyOffset)
-        self.phaseJitter = try container.decodeIfPresent(PhaseJitter.self, forKey: .phaseJitter)
-        self.wander = try container.decodeIfPresent(Wander.self, forKey: .wander)
-        self.temperatureDrift = try container.decodeIfPresent(TemperatureDrift.self, forKey: .temperatureDrift)
-
         Self.normalize(&self.storage, &self.sign)
     }
 
@@ -36,11 +26,5 @@ extension PrecisionTimeInterval: Codable {
         try container.encode(seconds, forKey: .seconds)
         try container.encode(attoseconds, forKey: .attoseconds)
         try container.encode(sign, forKey: .sign)
-
-        // Encode calibration metadata (only if present)
-        try container.encodeIfPresent(frequencyOffset, forKey: .frequencyOffset)
-        try container.encodeIfPresent(phaseJitter, forKey: .phaseJitter)
-        try container.encodeIfPresent(wander, forKey: .wander)
-        try container.encodeIfPresent(temperatureDrift, forKey: .temperatureDrift)
     }
 }
