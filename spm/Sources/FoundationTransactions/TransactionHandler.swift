@@ -68,13 +68,22 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     }
 
     /// Default timeout for transactions in seconds.
-    public var defaultTimeout: TimeInterval = 30.0
+    public var defaultTimeout: TimeInterval {
+        get { lock.lock(); defer { lock.unlock() }; return _defaultTimeout }
+        set { lock.lock(); defer { lock.unlock() }; _defaultTimeout = newValue }
+    }
 
     /// Maximum number of concurrent parallel transactions.
-    public var maxConcurrentParallel: Int = 10
+    public var maxConcurrentParallel: Int {
+        get { lock.lock(); defer { lock.unlock() }; return _maxConcurrentParallel }
+        set { lock.lock(); defer { lock.unlock() }; _maxConcurrentParallel = newValue }
+    }
 
     /// Maximum queue depth for serial commands.
-    public var maxSerialQueueDepth: Int = 100
+    public var maxSerialQueueDepth: Int {
+        get { lock.lock(); defer { lock.unlock() }; return _maxSerialQueueDepth }
+        set { lock.lock(); defer { lock.unlock() }; _maxSerialQueueDepth = newValue }
+    }
 
     /// Publisher for unsolicited events from the resource.
     ///
@@ -101,7 +110,10 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     ///
     /// If the message does not match any pending transaction, call
     /// `inboundTransactionHandler` (if set) before returning.
-    public var messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    public var messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
+        get { lock.lock(); defer { lock.unlock() }; return _messageParser }
+        set { lock.lock(); defer { lock.unlock() }; _messageParser = newValue }
+    }
 
     /// Handler for inbound messages whose transaction ID was not initiated locally.
     ///
@@ -115,7 +127,10 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     ///     // Parse the remote-initiated frame and send a response via the pipe
     /// }
     /// ```
-    public var inboundTransactionHandler: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    public var inboundTransactionHandler: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
+        get { lock.lock(); defer { lock.unlock() }; return _inboundTransactionHandler }
+        set { lock.lock(); defer { lock.unlock() }; _inboundTransactionHandler = newValue }
+    }
 
     // MARK: - Private Properties
 
@@ -123,6 +138,13 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private let unsolicitedEventSubject = PassthroughSubject<TransactionEvent, Never>()
     private var cancellables = Set<AnyCancellable>()
     private let lock = NSRecursiveLock()
+    private var _defaultTimeout: TimeInterval = 30.0
+    private var _maxConcurrentParallel: Int = 10
+    private var _maxSerialQueueDepth: Int = 100
+    private var _messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    private var _inboundTransactionHandler: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    private var serialQueueHead: Int = 0
+    private var exclusiveQueueHead: Int = 0
 
     /// Counter for generating unique transaction IDs.
     /// IDs cycle 1–899 to stay within the UR robot protocol range.
@@ -164,9 +186,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
 
         pipe.setStringMessageHandler { [weak self] message in
             guard let self = self else { return }
-            if let parser = self.messageParser {
-                parser(self, message)
-            }
+            let parser = self.messageParser
+            parser?(self, message)
         }
     }
 
@@ -227,7 +248,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         } else if let commandTimeout = command.timeout {
             resolvedTimeout = TimeInterval(commandTimeout)
         } else {
-            resolvedTimeout = defaultTimeout
+            resolvedTimeout = _defaultTimeout
         }
 
         let transaction = Transaction(
@@ -339,6 +360,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// Transitioning to `.error`, `.estop`, or `.disconnected` automatically
     /// cancels all active and queued transactions.
     public func updateResourceState(_ state: ResourceState) {
+        lock.lock()
+        defer { lock.unlock() }
         resourceStateSubject.send(state)
 
         if state == .error || state == .estop || state == .disconnected {
@@ -377,7 +400,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     public var serialQueueCount: Int {
         lock.lock()
         defer { lock.unlock() }
-        return serialQueue.count
+        return serialQueue.count - serialQueueHead
     }
 
     /// Count of currently active parallel transactions.
@@ -404,7 +427,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         }
 
         if activeSerialTransaction != nil {
-            if serialQueue.count >= maxSerialQueueDepth {
+            if (serialQueue.count - serialQueueHead) >= _maxSerialQueueDepth {
                 transaction.markFailed(
                     error: .categoryConflict(requested: .serial, current: .serial)
                 )
@@ -412,7 +435,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
                 return
             }
             serialQueue.append(transaction)
-            transaction.markQueued(position: serialQueue.count - 1)
+            transaction.markQueued(position: serialQueue.count - serialQueueHead - 1)
         } else {
             executeSerial(transaction)
         }
@@ -425,7 +448,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
             return
         }
 
-        if activeParallelTransactions.count >= maxConcurrentParallel {
+        if activeParallelTransactions.count >= _maxConcurrentParallel {
             transaction.markFailed(
                 error: .categoryConflict(requested: .parallel, current: .parallel)
             )
@@ -445,7 +468,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
 
         if activeExclusiveTransaction != nil {
             exclusiveQueue.append(transaction)
-            transaction.markQueued(position: exclusiveQueue.count - 1)
+            transaction.markQueued(position: exclusiveQueue.count - exclusiveQueueHead - 1)
         } else {
             executeExclusive(transaction)
         }
@@ -478,16 +501,11 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         let transactionID = transaction.id
         let timeout = transaction.timeout
 
-        let timer = DispatchQueue.OCombine(.global())
-            .schedule(
-                after: .init(.now() + timeout),
-                interval: .seconds(Int(timeout)),
-                tolerance: .milliseconds(100)
-            ) { [weak self] in
-                self?.handleTimeout(transactionID: transactionID)
-            }
-
-        timeoutTimers[transactionID] = AnyCancellable { timer.cancel() }
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.handleTimeout(transactionID: transactionID)
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: workItem)
+        timeoutTimers[transactionID] = AnyCancellable { workItem.cancel() }
     }
 
     private func cancelTimeout(for transactionID: Int) {
@@ -498,6 +516,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private func handleTimeout(transactionID: Int) {
         lock.lock()
         defer { lock.unlock() }
+
+        cancelTimeout(for: transactionID)
 
         guard let transaction = allActiveTransactions[transactionID],
             !transaction.isTerminal
@@ -515,7 +535,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         case .serial:
             if activeSerialTransaction?.id == transaction.id {
                 activeSerialTransaction = nil
-                if serialQueue.isEmpty && resourceState == .busy {
+                if serialQueueHead >= serialQueue.count && resourceState == .busy {
                     updateResourceState(.idle)
                 }
             }
@@ -528,18 +548,38 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         }
     }
 
+    private func dequeueSerial() -> Transaction<Command>? {
+        guard serialQueueHead < serialQueue.count else { return nil }
+        let item = serialQueue[serialQueueHead]
+        serialQueueHead += 1
+        if serialQueueHead * 2 >= serialQueue.count {
+            serialQueue.removeFirst(serialQueueHead)
+            serialQueueHead = 0
+        }
+        return item
+    }
+
+    private func dequeueExclusive() -> Transaction<Command>? {
+        guard exclusiveQueueHead < exclusiveQueue.count else { return nil }
+        let item = exclusiveQueue[exclusiveQueueHead]
+        exclusiveQueueHead += 1
+        if exclusiveQueueHead * 2 >= exclusiveQueue.count {
+            exclusiveQueue.removeFirst(exclusiveQueueHead)
+            exclusiveQueueHead = 0
+        }
+        return item
+    }
+
     private func processNextInQueue(for category: TransactionConcurrency) {
         switch category {
         case .serial:
-            if activeSerialTransaction == nil, let next = serialQueue.first {
-                serialQueue.removeFirst()
+            if activeSerialTransaction == nil, let next = dequeueSerial() {
                 executeSerial(next)
             }
         case .parallel:
             break  // Parallel commands don't queue
         case .exclusive:
-            if activeExclusiveTransaction == nil, let next = exclusiveQueue.first {
-                exclusiveQueue.removeFirst()
+            if activeExclusiveTransaction == nil, let next = dequeueExclusive() {
                 executeExclusive(next)
             }
         }
@@ -555,15 +595,9 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         activeSerialTransaction = nil
         activeParallelTransactions.removeAll()
         activeExclusiveTransaction = nil
-
-        for transaction in serialQueue {
-            transaction.markFailed(error: error)
-        }
         serialQueue.removeAll()
-
-        for transaction in exclusiveQueue {
-            transaction.markFailed(error: error)
-        }
+        serialQueueHead = 0
         exclusiveQueue.removeAll()
+        exclusiveQueueHead = 0
     }
 }

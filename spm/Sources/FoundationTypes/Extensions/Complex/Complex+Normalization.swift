@@ -44,7 +44,7 @@ extension Complex: NormalizableFloat where T == Float {
     /// Uses squared magnitude to avoid expensive sqrt operation
     @inlinable
     public var isUnit: Bool {
-        abs(simd_length_squared(_storage) - 1) < 1e-10
+        abs(simd_length_squared(_storage) - 1) < 1e-5
     }
 }
 

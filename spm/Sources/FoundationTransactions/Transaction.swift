@@ -17,7 +17,12 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
     public var category: TransactionConcurrency { command.commandType }
 
     /// Current state of the transaction.
-    public private(set) var state: TransactionState
+    public var state: TransactionState {
+        lock.lock()
+        defer { lock.unlock() }
+        return _state
+    }
+    private var _state: TransactionState
 
     /// Timestamp when the transaction was created.
     public let createdAt: Date
@@ -66,7 +71,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
     public init(id: Int, command: Command, timeout: TimeInterval? = nil) {
         self.id = id
         self.command = command
-        self.state = .pending
+        self._state = .pending
         self.createdAt = Date()
         self.timeout = timeout ?? TimeInterval(command.timeout ?? 30.0)
         self.statePublisher = CurrentValueSubject(.pending)
@@ -121,7 +126,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
     func markTimedOut() {
         lock.lock()
         defer { lock.unlock() }
-        self.error = state == .awaitingAck ? .acknowledgmentTimeout : .responseTimeout
+        self.error = _state == .awaitingAck ? .acknowledgmentTimeout : .responseTimeout
         completedAt = Date()
         updateState(.timedOut)
         resultPublisher.send(.timedOut(transactionID: id))
@@ -149,19 +154,25 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     /// Elapsed time since the transaction was sent, or nil if not yet sent.
     public var elapsedSinceSent: TimeInterval? {
+        lock.lock()
+        defer { lock.unlock() }
         guard let sentAt = sentAt else { return nil }
         return Date().timeIntervalSince(sentAt)
     }
 
     /// Whether the transaction has exceeded its timeout.
     public var isTimedOut: Bool {
-        guard let elapsed = elapsedSinceSent else { return false }
-        return elapsed > timeout
+        lock.lock()
+        defer { lock.unlock() }
+        guard let sentAt = sentAt else { return false }
+        return Date().timeIntervalSince(sentAt) > timeout
     }
 
     /// Whether the transaction is in a terminal state (completed, failed, cancelled, timedOut).
     public var isTerminal: Bool {
-        switch state {
+        lock.lock()
+        defer { lock.unlock() }
+        switch _state {
         case .completed, .failed, .cancelled, .timedOut:
             return true
         case .pending, .awaitingAck, .executing, .queued:
@@ -170,7 +181,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
     }
 
     private func updateState(_ newState: TransactionState) {
-        state = newState
+        _state = newState
         statePublisher.send(newState)
     }
 }
