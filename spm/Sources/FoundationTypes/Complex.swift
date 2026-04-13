@@ -95,7 +95,8 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     }
 }
 
-/// Explicitly marks `Complex` as `Sendable` for concurrency safety.
+// SIMD2<T> lacks a conditional Sendable conformance in the stdlib, so synthesis
+// cannot verify this automatically. Complex is a pure value type — safe.
 extension Complex: @unchecked Sendable {}
 
 // MARK: - Phasor/Polar Initializer (Double)

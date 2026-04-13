@@ -117,7 +117,7 @@ extension TransactionEvent: Equatable, Hashable {
 
 extension TransactionEvent: CustomStringConvertible {
     public var description: String {
-        let type = isSolicited ? "solicited(txn:\(transactionID!))" : "unsolicited"
+        let type = transactionID.map { "solicited(txn:\($0))" } ?? "unsolicited"
         let payloadDesc = payload.map { " payload:\($0.prefix(50))" } ?? ""
         return "TransactionEvent(code:\(code) \(type)\(payloadDesc))"
     }

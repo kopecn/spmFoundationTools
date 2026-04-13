@@ -69,6 +69,9 @@ public enum TransactionError: Error, Sendable {
     /// Transaction was cancelled before completion.
     case cancelled
 
+    /// A transaction was submitted with an ID already in use by an active transaction.
+    case duplicateTransactionID(id: Int)
+
     /// Unknown or unexpected error.
     case unknown(underlying: Error?)
 }

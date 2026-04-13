@@ -81,32 +81,36 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     func markSent() {
         lock.lock()
-        defer { lock.unlock() }
         sentAt = Date()
-        updateState(.awaitingAck)
+        _state = .awaitingAck
+        lock.unlock()
+        statePublisher.send(.awaitingAck)
     }
 
     func markAcknowledged() {
         lock.lock()
-        defer { lock.unlock() }
         acknowledgedAt = Date()
-        updateState(.executing)
+        _state = .executing
+        lock.unlock()
+        statePublisher.send(.executing)
         resultPublisher.send(.acknowledged(transactionID: id))
     }
 
     func markQueued(position: Int) {
         lock.lock()
-        defer { lock.unlock() }
-        updateState(.queued)
+        _state = .queued
+        lock.unlock()
+        statePublisher.send(.queued)
         resultPublisher.send(.queued(transactionID: id, position: position))
     }
 
     func markCompleted(response: String? = nil) {
         lock.lock()
-        defer { lock.unlock() }
         self.response = response
         completedAt = Date()
-        updateState(.completed)
+        _state = .completed
+        lock.unlock()
+        statePublisher.send(.completed)
         resultPublisher.send(.completed(transactionID: id, response: response))
         resultPublisher.send(completion: .finished)
         eventPublisher.send(completion: .finished)
@@ -114,10 +118,11 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     func markFailed(error: TransactionError) {
         lock.lock()
-        defer { lock.unlock() }
         self.error = error
         completedAt = Date()
-        updateState(.failed)
+        _state = .failed
+        lock.unlock()
+        statePublisher.send(.failed)
         resultPublisher.send(.failed(transactionID: id, error: error))
         resultPublisher.send(completion: .finished)
         eventPublisher.send(completion: .finished)
@@ -125,10 +130,12 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     func markTimedOut() {
         lock.lock()
-        defer { lock.unlock() }
-        self.error = _state == .awaitingAck ? .acknowledgmentTimeout : .responseTimeout
+        let errorType: TransactionError = _state == .awaitingAck ? .acknowledgmentTimeout : .responseTimeout
+        self.error = errorType
         completedAt = Date()
-        updateState(.timedOut)
+        _state = .timedOut
+        lock.unlock()
+        statePublisher.send(.timedOut)
         resultPublisher.send(.timedOut(transactionID: id))
         resultPublisher.send(completion: .finished)
         eventPublisher.send(completion: .finished)
@@ -136,10 +143,11 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     func markCancelled() {
         lock.lock()
-        defer { lock.unlock() }
         self.error = .cancelled
         completedAt = Date()
-        updateState(.cancelled)
+        _state = .cancelled
+        lock.unlock()
+        statePublisher.send(.cancelled)
         resultPublisher.send(.failed(transactionID: id, error: .cancelled))
         resultPublisher.send(completion: .finished)
         eventPublisher.send(completion: .finished)
@@ -147,8 +155,8 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
 
     func receiveEvent(_ event: TransactionEvent) {
         lock.lock()
-        defer { lock.unlock() }
         events.append(event)
+        lock.unlock()
         eventPublisher.send(event)
     }
 
@@ -180,10 +188,6 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         }
     }
 
-    private func updateState(_ newState: TransactionState) {
-        _state = newState
-        statePublisher.send(newState)
-    }
 }
 
 // MARK: - Hashable

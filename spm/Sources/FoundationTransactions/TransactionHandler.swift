@@ -110,7 +110,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     ///
     /// If the message does not match any pending transaction, call
     /// `inboundTransactionHandler` (if set) before returning.
-    public var messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
+    public var messageParser: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
         get { lock.lock(); defer { lock.unlock() }; return _messageParser }
         set { lock.lock(); defer { lock.unlock() }; _messageParser = newValue }
     }
@@ -127,7 +127,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     ///     // Parse the remote-initiated frame and send a response via the pipe
     /// }
     /// ```
-    public var inboundTransactionHandler: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
+    public var inboundTransactionHandler: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
         get { lock.lock(); defer { lock.unlock() }; return _inboundTransactionHandler }
         set { lock.lock(); defer { lock.unlock() }; _inboundTransactionHandler = newValue }
     }
@@ -141,8 +141,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private var _defaultTimeout: TimeInterval = 30.0
     private var _maxConcurrentParallel: Int = 10
     private var _maxSerialQueueDepth: Int = 100
-    private var _messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
-    private var _inboundTransactionHandler: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    private var _messageParser: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    private var _inboundTransactionHandler: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
     private var serialQueueHead: Int = 0
     private var exclusiveQueueHead: Int = 0
 
@@ -249,6 +249,12 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
             resolvedTimeout = TimeInterval(commandTimeout)
         } else {
             resolvedTimeout = _defaultTimeout
+        }
+
+        if allActiveTransactions[transactionID] != nil {
+            let failed = Transaction(id: transactionID, command: command, timeout: resolvedTimeout)
+            failed.markFailed(error: .duplicateTransactionID(id: transactionID))
+            return failed
         }
 
         let transaction = Transaction(

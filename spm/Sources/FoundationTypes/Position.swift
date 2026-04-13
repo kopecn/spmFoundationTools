@@ -246,7 +246,8 @@ extension Position where T: BinaryFloatingPoint {
     }
 }
 
-// Unsafe but explicit Sendable conformance
+// SIMD3<T> lacks a conditional Sendable conformance in the stdlib, so synthesis
+// cannot verify this automatically. Position is a pure value type — safe.
 extension Position: @unchecked Sendable {}
 
 extension Position {
