@@ -28,23 +28,25 @@ public typealias DoublePosition = Position<Double>
 /// ```
 public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
 
-    /// The SIMD vector representation of the position (x, y, z)
-    public var vector: SIMD3<T> {
-        didSet {
-            _isNormalized = false
-        }
-    }
+    @usableFromInline
+    internal var _vector: SIMD3<T>
 
-    /// Cached flag indicating whether this complex number is normalized
+    /// Cached flag indicating whether this position is normalized
     @usableFromInline
     internal var _isNormalized: Bool
+
+    /// The SIMD3 vector backing this position (x, y, z).
+    public var vector: SIMD3<T> {
+        @inlinable get { _vector }
+        @inlinable set { _vector = newValue; _isNormalized = false }
+    }
 
     /// The x component
     @inlinable
     public var x: T {
-        get { vector.x }
+        get { _vector.x }
         set {
-            vector.x = newValue
+            _vector.x = newValue
             _isNormalized = false
         }
     }
@@ -52,9 +54,9 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     /// The y component
     @inlinable
     public var y: T {
-        get { vector.y }
+        get { _vector.y }
         set {
-            vector.y = newValue
+            _vector.y = newValue
             _isNormalized = false
         }
     }
@@ -62,9 +64,9 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     /// The z component
     @inlinable
     public var z: T {
-        get { vector.z }
+        get { _vector.z }
         set {
-            vector.z = newValue
+            _vector.z = newValue
             _isNormalized = false
         }
     }
@@ -84,7 +86,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - z: The z component
     @inlinable
     public init(x: T, y: T, z: T, isNormalized: Bool = false) {
-        self.vector = SIMD3<T>(x, y, z)
+        self._vector = SIMD3<T>(x, y, z)
         self._isNormalized = isNormalized
     }
 
@@ -92,7 +94,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     /// - Parameter vector: The SIMD3 vector (x, y, z)
     @inlinable
     public init(vector: SIMD3<T>, isNormalized: Bool = false) {
-        self.vector = vector
+        self._vector = vector
         self._isNormalized = isNormalized
     }
 
@@ -116,7 +118,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         var sinAngle: T = 0
         var cosAngle: T = 0
         __sincos(angle, &sinAngle, &cosAngle)
-        self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
+        self._vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
         self._isNormalized = isNormalized
     }
 
@@ -130,7 +132,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         var sinAngle: T = 0
         var cosAngle: T = 0
         __sincosf(angle, &sinAngle, &cosAngle)
-        self.vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
+        self._vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
         self._isNormalized = isNormalized
     }
 
@@ -149,7 +151,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincos(azimuth, &sinAzimuth, &cosAzimuth)
         __sincos(elevation, &sinElevation, &cosElevation)
         let radiusXY = radius * cosElevation
-        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
+        self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
         self._isNormalized = isNormalized
     }
 
@@ -168,7 +170,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
         __sincosf(elevation, &sinElevation, &cosElevation)
         let radiusXY = radius * cosElevation
-        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
+        self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
         self._isNormalized = isNormalized
     }
 
@@ -189,7 +191,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincos(azimuth, &sinAzimuth, &cosAzimuth)
         __sincos(polar, &sinPolar, &cosPolar)
         let radiusXY = radius * sinPolar
-        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
+        self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
         self._isNormalized = isNormalized
     }
 
@@ -210,7 +212,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
         __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
         __sincosf(polar, &sinPolar, &cosPolar)
         let radiusXY = radius * sinPolar
-        self.vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
+        self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
         self._isNormalized = isNormalized
     }
 }

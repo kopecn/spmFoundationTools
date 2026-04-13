@@ -286,15 +286,19 @@ public struct PrecisionTimeInterval: Sendable {
 }
 
 extension PrecisionTimeInterval {
+    @inlinable
     public static var oneSecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 1, attoseconds: 0, sign: .positive)
     }
+    @inlinable
     public static var oneDecisecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerDeciSecond, sign: .positive)
     }
+    @inlinable
     public static var oneMillisecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerMilliSecond, sign: .positive)
     }
+    @inlinable
     public static var oneMicrosecond: PrecisionTimeInterval {
         return PrecisionTimeInterval(seconds: 0, attoseconds: Self.attosecondsPerMicroSecond, sign: .positive)
     }
