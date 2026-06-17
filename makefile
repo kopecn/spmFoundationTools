@@ -77,3 +77,5 @@ release: clean build test  ## Full release process
 checkGitClean:
 	@git diff-index --quiet HEAD -- || (echo "Git working directory not clean" && exit 1)
 
+open-github: ## Open this repo's GitHub page in the browser
+	@bash $(SCRIPTS)/open-github.sh
