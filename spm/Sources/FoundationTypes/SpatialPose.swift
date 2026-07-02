@@ -113,6 +113,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - position: The position vector (x, y, z)
     ///   - rotation: The rotation quaternion (x, y, z, w)
     ///   - isNormalized: Whether the rotation quaternion is known to be normalized (default: false)
+    @inlinable
     public init(position: SIMD3<T>, rotation: SIMD4<T>, isNormalized: Bool = false) {
         self._pos = Position<T>(vector: position)
         self._rot = Quaternion<T>(vector: rotation, isNormalized: isNormalized)
@@ -128,6 +129,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     ///   - qz: The z component of rotation quaternion
     ///   - qw: The w component of rotation quaternion
     ///   - isNormalized: Whether the rotation quaternion is known to be normalized (default: false)
+    @inlinable
     public init(x: T, y: T, z: T, qx: T, qy: T, qz: T, qw: T, isNormalized: Bool = false) {
         self._pos = Position<T>(x: x, y: y, z: z)
         self._rot = Quaternion<T>(x: qx, y: qy, z: qz, w: qw, isNormalized: isNormalized)
@@ -137,6 +139,7 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
     /// - Parameters:
     ///   - position: The Position instance
     ///   - rotation: The Quaternion instance
+    @inlinable
     public init(position: Position<T>, rotation: Quaternion<T>) {
         self._pos = position
         self._rot = rotation
@@ -296,10 +299,11 @@ public struct SpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codab
 extension SpatialPose where T == Float {
     /// Convert the pose to a 4x4 homogeneous transformation matrix
     /// - Returns: A 4x4 transformation matrix in column-major order
+    @inlinable
     public var homogeneousTransform: simd_float4x4 {
         // Create and normalize quaternion
         var quat = _rot
-        quat.normalize()
+        if !quat.isNormalized { quat.normalize() }
 
         // Get rotation matrix elements (single source of truth)
         let m = quat.matrixElements
@@ -318,10 +322,11 @@ extension SpatialPose where T == Float {
 extension SpatialPose where T == Double {
     /// Convert the pose to a 4x4 homogeneous transformation matrix
     /// - Returns: A 4x4 transformation matrix in column-major order
+    @inlinable
     public var homogeneousTransform: simd_double4x4 {
         // Create and normalize quaternion
         var quat = _rot
-        quat.normalize()
+        if !quat.isNormalized { quat.normalize() }
 
         // Get rotation matrix elements (single source of truth)
         let m = quat.matrixElements

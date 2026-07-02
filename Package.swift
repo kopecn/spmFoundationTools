@@ -28,11 +28,16 @@ let package = Package(
             name: "FoundationInterfaces",
             targets: ["FoundationInterfaces"]
         ),
+        .library(
+            name: "FoundationTransactions",
+            targets: ["FoundationTransactions"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/daikimat/depermaid.git", from: "1.1.0"),
         .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
+        .package(url: "https://github.com/OpenCombine/OpenCombine", from: "0.14.0"),
     ],
     targets: [
         .target(
@@ -60,6 +65,15 @@ let package = Package(
                 .product(name: "kvSIMD", package: "kvSIMD.swift")
             ],
             path: "spm/Sources/FoundationTypes"
+        ),
+        .target(
+            name: "FoundationTransactions",
+            dependencies: [
+                "FoundationInterfaces",
+                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
+            ],
+            path: "spm/Sources/FoundationTransactions"
         ),
         .testTarget(
             name: "FoundationToolsTests",

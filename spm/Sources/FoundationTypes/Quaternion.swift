@@ -27,23 +27,25 @@ public typealias DoubleQuaternion = Quaternion<Double>
 /// ```
 public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> {
 
-    /// The SIMD vector representation of the quaternion (x, y, z, w)
-    public var vector: SIMD4<T> {
-        didSet {
-            _isNormalized = false
-        }
-    }
+    @usableFromInline
+    internal var _vector: SIMD4<T>
 
     /// Cached flag indicating whether this quaternion is normalized
     @usableFromInline
     internal var _isNormalized: Bool
 
+    /// The SIMD4 vector backing this quaternion (x, y, z, w).
+    public var vector: SIMD4<T> {
+        @inlinable get { _vector }
+        @inlinable set { _vector = newValue; _isNormalized = false }
+    }
+
     /// The x component (i coefficient)
     @inlinable
     public var x: T {
-        get { vector.x }
+        get { _vector.x }
         set {
-            vector.x = newValue
+            _vector.x = newValue
             _isNormalized = false
         }
     }
@@ -51,9 +53,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The y component (j coefficient)
     @inlinable
     public var y: T {
-        get { vector.y }
+        get { _vector.y }
         set {
-            vector.y = newValue
+            _vector.y = newValue
             _isNormalized = false
         }
     }
@@ -61,9 +63,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The z component (k coefficient)
     @inlinable
     public var z: T {
-        get { vector.z }
+        get { _vector.z }
         set {
-            vector.z = newValue
+            _vector.z = newValue
             _isNormalized = false
         }
     }
@@ -71,9 +73,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The w component (real part)
     @inlinable
     public var w: T {
-        get { vector.w }
+        get { _vector.w }
         set {
-            vector.w = newValue
+            _vector.w = newValue
             _isNormalized = false
         }
     }
@@ -81,11 +83,11 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The imaginary part as a 3D vector (x, y, z)
     @inlinable
     public var imaginary: SIMD3<T> {
-        get { SIMD3<T>(vector.x, vector.y, vector.z) }
+        get { SIMD3<T>(_vector.x, _vector.y, _vector.z) }
         set {
-            vector.x = newValue.x
-            vector.y = newValue.y
-            vector.z = newValue.z
+            _vector.x = newValue.x
+            _vector.y = newValue.y
+            _vector.z = newValue.z
             _isNormalized = false
         }
     }
@@ -93,9 +95,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The real part (w component)
     @inlinable
     public var real: T {
-        get { vector.w }
+        get { _vector.w }
         set {
-            vector.w = newValue
+            _vector.w = newValue
             _isNormalized = false
         }
     }
@@ -111,7 +113,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
     @inlinable
     public init(x: T, y: T, z: T, w: T, isNormalized: Bool = false) {
-        self.vector = SIMD4<T>(x, y, z, w)
+        self._vector = SIMD4<T>(x, y, z, w)
         self._isNormalized = isNormalized
     }
 
@@ -121,7 +123,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
     @inlinable
     public init(vector: SIMD4<T>, isNormalized: Bool = false) {
-        self.vector = vector
+        self._vector = vector
         self._isNormalized = isNormalized
     }
 
@@ -132,13 +134,15 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - isNormalized: Whether this quaternion is known to be normalized (default: false)
     @inlinable
     public init(imaginary: SIMD3<T>, real: T, isNormalized: Bool = false) {
-        self.vector = SIMD4<T>(imaginary.x, imaginary.y, imaginary.z, real)
+        self._vector = SIMD4<T>(imaginary.x, imaginary.y, imaginary.z, real)
         self._isNormalized = isNormalized
     }
+
     /// Initialize a quaternion from an axis and angle
     /// - Parameters:
     ///   - axis: The rotation axis (should be normalized)
     ///   - angle: The rotation angle in radians
+    @inlinable
     public init(axis: SIMD3<T>, angle: T) where T == Double {
         let halfAngle = angle * 0.5
         var sinHalfAngle: T = 0
@@ -147,7 +151,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
 
         let normalizedAxis = simd_normalize(axis)
 
-        self.vector = SIMD4<T>(
+        self._vector = SIMD4<T>(
             normalizedAxis.x * sinHalfAngle,
             normalizedAxis.y * sinHalfAngle,
             normalizedAxis.z * sinHalfAngle,
@@ -160,6 +164,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// - Parameters:
     ///   - axis: The rotation axis (should be normalized)
     ///   - angle: The rotation angle in radians
+    @inlinable
     public init(axis: SIMD3<T>, angle: T) where T == Float {
         let halfAngle = angle * 0.5
         var sinHalfAngle: T = 0
@@ -168,7 +173,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
 
         let normalizedAxis = simd_normalize(axis)
 
-        self.vector = SIMD4<T>(
+        self._vector = SIMD4<T>(
             normalizedAxis.x * sinHalfAngle,
             normalizedAxis.y * sinHalfAngle,
             normalizedAxis.z * sinHalfAngle,
@@ -182,6 +187,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - roll: Rotation around x-axis in radians
     ///   - pitch: Rotation around y-axis in radians
     ///   - yaw: Rotation around z-axis in radians
+    @inlinable
     public init(roll: T, pitch: T, yaw: T) where T == Float {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
         var sx: T = 0
@@ -194,7 +200,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
         __sincosf(halfAngles.y, &sy, &cy)
         __sincosf(halfAngles.z, &sz, &cz)
 
-        self.vector = SIMD4<T>(
+        self._vector = SIMD4<T>(
             sx * cy * cz - cx * sy * sz,
             cx * sy * cz + sx * cy * sz,
             cx * cy * sz - sx * sy * cz,
@@ -208,6 +214,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     ///   - roll: Rotation around x-axis in radians
     ///   - pitch: Rotation around y-axis in radians
     ///   - yaw: Rotation around z-axis in radians
+    @inlinable
     public init(roll: T, pitch: T, yaw: T) where T == Double {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
         var sx: T = 0
@@ -220,7 +227,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
         __sincos(halfAngles.y, &sy, &cy)
         __sincos(halfAngles.z, &sz, &cz)
 
-        self.vector = SIMD4<T>(
+        self._vector = SIMD4<T>(
             sx * cy * cz - cx * sy * sz,
             cx * sy * cz + sx * cy * sz,
             cx * cy * sz - sx * sy * cz,

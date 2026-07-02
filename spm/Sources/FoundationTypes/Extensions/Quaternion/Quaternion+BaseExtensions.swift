@@ -22,6 +22,7 @@ extension Quaternion: Equatable {
 ///
 /// Hashes the x, y, z, and w components of the quaternion.
 extension Quaternion: Hashable where T: Hashable {
+    @inlinable
     public func hash(into hasher: inout Hasher) {
         hasher.combine(vector.x)
         hasher.combine(vector.y)
