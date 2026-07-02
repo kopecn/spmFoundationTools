@@ -6,40 +6,60 @@ import PackageDescription
 let package = Package(
     name: "FoundationTools",
     platforms: [
-        .macOS(.v14)  // Minimum macOS version
+        .macOS(.v14),  // Minimum macOS version
+        .iOS(.v16),
+        .tvOS(.v16),
+        .watchOS(.v9)
     ],
     products: [
         .library(
             name: "FoundationTools",
             targets: ["FoundationTools"]
-        )
+        ),
+        .library(
+            name: "FoundationTypes",
+            targets: ["FoundationTypes"]
+        ),
+        .library(
+            name: "FoundationCommon",
+            targets: ["FoundationCommon"]
+        ),
+        .library(
+            name: "FoundationInterfaces",
+            targets: ["FoundationInterfaces"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/daikimat/depermaid.git", from: "1.1.0"),
-        .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
+        .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
     ],
     targets: [
-        .executableTarget(
-            name: "FoundationUIDemo", 
-            dependencies: [
-                "FoundationTools",
-                .product(name: "OpenCombine", package: "OpenCombine"),
-            ], 
-            path: "spm/Sources/FoundationUIDemo"
-        ),
         .target(
             name: "FoundationTools",
             dependencies: [
                 "FoundationCommon",
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "OpenCombine", package: "OpenCombine"),
+                "FoundationTypes",
+                "FoundationInterfaces",
+                .product(name: "Logging", package: "swift-log")
             ],
-            path: "spm/Sources/FoundationTools",
+            path: "spm/Sources/FoundationTools"
         ),
         .target(
             name: "FoundationCommon",
             path: "spm/Sources/FoundationCommon"
+        ),
+        .target(
+            name: "FoundationInterfaces",
+            path: "spm/Sources/FoundationInterfaces"
+        ),
+        .target(
+            name: "FoundationTypes",
+            dependencies: [
+                "FoundationInterfaces",
+                .product(name: "kvSIMD", package: "kvSIMD.swift")
+            ],
+            path: "spm/Sources/FoundationTypes"
         ),
         .testTarget(
             name: "FoundationToolsTests",
@@ -51,5 +71,10 @@ let package = Package(
             dependencies: ["FoundationCommon"],
             path: "spm/Tests/FoundationCommonTests"
         ),
+        .testTarget(
+            name: "FoundationTypesTests",
+            dependencies: ["FoundationTypes"],
+            path: "spm/Tests/FoundationTypesTests"
+        )
     ]
 )
