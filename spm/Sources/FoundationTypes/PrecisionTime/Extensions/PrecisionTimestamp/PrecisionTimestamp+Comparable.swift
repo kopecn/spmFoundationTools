@@ -86,11 +86,15 @@ extension PrecisionTimestamp {
                 delta = self.interval - other.interval
             }
 
-            // Check if combined uncertainties overlap
-            let combinedUncertainty = lhsUncertainty + rhsUncertainty
+            // Build combined uncertainty as a PrecisionTimeInterval, handling UInt64 overflow
+            let uncertaintyInterval = PrecisionTimeInterval(
+                seconds: 0, attoseconds: lhsUncertainty, sign: .positive
+            ) + PrecisionTimeInterval(
+                seconds: 0, attoseconds: rhsUncertainty, sign: .positive
+            )
 
             // If the difference is smaller than combined uncertainty, they overlap
-            if delta.seconds == 0 && delta.attoseconds <= combinedUncertainty {
+            if delta < uncertaintyInterval || delta == uncertaintyInterval {
                 return .failure(.overlappingUncertainty)
             }
         }

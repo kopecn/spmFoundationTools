@@ -761,8 +761,8 @@ struct WaveformSpatialPoseEdgeCasesTests {
         let quaternions = [FloatQuaternion.zero, FloatQuaternion.zero]
         let waveform = FloatWaveformSpatialPose(positions: positions, quaternions: quaternions)
 
-        // Positions of 0,0,0 are considered unit
-        #expect(waveform.areAllPositionsUnit == true)
+        // Zero-vector positions are not unit vectors
+        #expect(waveform.areAllPositionsUnit == false)
         #expect(waveform.areAllQuaternionsNormalized == false)
 
         // Normalizing should handle zero values appropriately

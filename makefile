@@ -6,8 +6,9 @@ APP_NAME = spmFoundationTools
 BUILD_DIR = .build
 CONFIG=./.swift-format.json
 
-help:  ## Show available make commands with descriptions
-	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z0-9_-]+:.*?## / {printf "%-20s -> %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+help: ## Show this help
+	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
 clean:  ## Clean all build artifacts
 	swift package clean
@@ -76,3 +77,5 @@ release: clean build test  ## Full release process
 checkGitClean:
 	@git diff-index --quiet HEAD -- || (echo "Git working directory not clean" && exit 1)
 
+open-github: ## Open this repo's GitHub page in the browser
+	@bash $(SCRIPTS)/open-github.sh
