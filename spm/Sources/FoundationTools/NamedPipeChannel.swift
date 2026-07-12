@@ -1,6 +1,6 @@
 import Foundation
+import FoundationCommon
 import FoundationInterfaces
-import os
 
 #if canImport(Darwin)
 import Darwin
@@ -50,6 +50,7 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
         var outboundFileDescriptor: Int32 = -1
         var dataHandler: (@Sendable (Data) -> Void)?
         var stringHandler: (@Sendable (String) -> Void)?
+        var readTask: Task<Void, Never>?
     }
 
     // MARK: - Properties
@@ -72,8 +73,7 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
 
     // MARK: - Private State
 
-    private let state: OSAllocatedUnfairLock<SyncState>
-    private var readTask: Task<Void, Never>?
+    private let state: Locked<SyncState>
 
     // MARK: - Initialization
 
@@ -86,7 +86,7 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
     public init(name: String, queueStrategy: QueueStrategy = .fifo) throws {
         self.name = name
         self.queueStrategy = queueStrategy
-        self.state = OSAllocatedUnfairLock(initialState: SyncState())
+        self.state = Locked(SyncState())
 
         try createPipes()
     }
@@ -133,10 +133,10 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
     }
 
     private func closeSync() {
-        readTask?.cancel()
-        readTask = nil
-
         state.withLock { state in
+            state.readTask?.cancel()
+            state.readTask = nil
+
             if state.inboundFileDescriptor != -1 {
                 closePipe(state.inboundFileDescriptor)
                 state.inboundFileDescriptor = -1
@@ -197,6 +197,17 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
     public func handleMessage(_ message: String) async {
         let handler = state.withLock { $0.stringHandler }
         handler?(message)
+    }
+
+    // MARK: - Testing Support
+
+    /// Whether the background read loop task is currently tracked in state.
+    ///
+    /// `internal` (not `private`) so `@testable import` reaches it from the
+    /// test target; not part of the public API. Used to assert that
+    /// `close()` leaves no dangling read task behind.
+    var hasActiveReadTask: Bool {
+        state.withLock { $0.readTask != nil }
     }
 
     // MARK: - Private Methods
@@ -271,7 +282,8 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
     private func enqueue(_ message: QueuedMessage, into state: inout SyncState) {
         switch queueStrategy {
         case .fifo:
-            let insertIndex = state.messageQueue.firstIndex { $0.priority < message.priority } ?? state.messageQueue.endIndex
+            let insertIndex =
+                state.messageQueue.firstIndex { $0.priority < message.priority } ?? state.messageQueue.endIndex
             state.messageQueue.insert(message, at: insertIndex)
         case .lifo:
             let insertIndex = state.messageQueue.firstIndex { $0.priority < message.priority } ?? 0
@@ -306,7 +318,7 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
     }
 
     private func startReadLoop() {
-        readTask = Task { [weak self] in
+        let task = Task { [weak self] in
             let bufferSize = 4096
             let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
             defer { buffer.deallocate() }
@@ -330,7 +342,8 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
                     }
 
                     if let handler = stringHandler,
-                       let string = String(data: data, encoding: .utf8) {
+                        let string = String(data: data, encoding: .utf8)
+                    {
                         handler(string)
                     }
                 } else if bytesRead == 0 {
@@ -342,6 +355,8 @@ public final class NamedPipeChannel: MessageDuplex, @unchecked Sendable {
                 }
             }
         }
+
+        state.withLock { $0.readTask = task }
     }
 }
 

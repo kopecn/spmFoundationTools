@@ -1,4 +1,5 @@
 import Foundation
+import Testing
 import XCTest
 
 @testable import FoundationTools
@@ -417,5 +418,34 @@ final class NamedPipeChannelTests: XCTestCase {
 
         XCTAssertTrue(result1)
         XCTAssertTrue(result2)
+    }
+}
+
+// MARK: - Race Regression (swift-testing)
+
+/// Regression for F2: `readTask` used to be mutated outside the state lock,
+/// racing `open()`'s `startReadLoop()` assignment against `close()`'s
+/// cancel/nil. `Locked<SyncState>` (F6/F9) now serializes every access, so
+/// this must be deterministic under repeated concurrent open/close and must
+/// leave no dangling read task behind.
+@Suite("NamedPipeChannel race regression")
+struct NamedPipeChannelRaceTests {
+
+    @Test("testF2_concurrentOpenCloseLeavesNoDanglingReadTask")
+    func testF2_concurrentOpenCloseLeavesNoDanglingReadTask() async throws {
+        let channel = try NamedPipeChannel(
+            name: "race_open_close_\(UUID().uuidString)",
+            queueStrategy: .fifo
+        )
+        defer { channel.close() }
+
+        for _ in 0..<100 {
+            async let opened: Void = { try? channel.open() }()
+            async let closed: Void = channel.close()
+            _ = await (opened, closed)
+        }
+
+        channel.close()
+        #expect(channel.hasActiveReadTask == false)
     }
 }

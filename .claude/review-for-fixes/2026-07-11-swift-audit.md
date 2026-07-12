@@ -3,7 +3,7 @@ type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
 last_updated: 2026-07-11
-semver: 0.1.0
+semver: 0.2.0
 author: Nicholas Bergantz
 ---
 
@@ -29,7 +29,7 @@ silently drops any unencodable value — data loss with no signal.
 `swift-log` (already a dependency of this target); count/log skipped
 unencodable keys instead of silently omitting them.
 
-### F2. `NamedPipeChannel.readTask` mutated outside the lock — MAJOR (data race)
+### F2. `NamedPipeChannel.readTask` mutated outside the lock — MAJOR (data race) — RESOLVED (chunk 02)
 `Sources/FoundationTools/NamedPipeChannel.swift:36` declares
 `@unchecked Sendable` justified by `OSAllocatedUnfairLock<SyncState>` — but
 `private var readTask: Task<Void, Never>?` (`:76`) sits **outside**
@@ -37,7 +37,10 @@ unencodable keys instead of silently omitting them.
 `:309` (concurrency spec: `@unchecked Sendable` requires an *obvious,
 complete* synchronization mechanism — this one has a hole).
 **Fix:** move `readTask` into the locked `SyncState`, or convert the class
-to an `actor` and delete `@unchecked Sendable` entirely.
+to an `actor` and delete `@unchecked Sendable` entirely. Applied: `readTask`
+moved into `SyncState`, guarded by the new `Locked<Value>` primitive; the
+actor conversion is deferred (API-breaking, recorded as a future
+consideration).
 
 ### F3. `TransactionHandler` timeout is unstructured and uncancellable — MAJOR
 `Sources/FoundationTransactions/TransactionHandler.swift:513`:
@@ -76,11 +79,13 @@ as originally counted.
 anyway); all 20 call sites route through it. See
 `spm/Sources/FoundationTypes/Support/SinCos.swift`.
 
-### F6. `OSAllocatedUnfairLock` is Apple-only — MAJOR*
+### F6. `OSAllocatedUnfairLock` is Apple-only — MAJOR* — RESOLVED (chunk 02)
 `FoundationTools/NamedPipeChannel.swift` (state lock). Swift 6's
 `Synchronization.Mutex` is the portable, modern equivalent.
 **Fix:** `Mutex<SyncState>` (fold together with F2's actor decision — an
-actor solves F2 and F6 at once).
+actor solves F2 and F6 at once). Applied: `Synchronization.Mutex` requires
+macOS 15 (floor is macOS 14), so `Locked<Value>` (`NSLock`-backed, portable
+to Linux via Foundation) replaces `OSAllocatedUnfairLock` instead.
 
 ## Fix — API & structural
 
@@ -100,11 +105,13 @@ dependencies).
 **Fix:** remove from `Package.swift` (re-add ad hoc when generating
 dependency diagrams).
 
-### F9. `FoundationCommon` is an empty product — MINOR
+### F9. `FoundationCommon` is an empty product — MINOR — PARTIALLY RESOLVED (chunk 02; cleanup in chunk 06)
 The target contains only `Placeholder.swift` (0 bytes) yet ships as a
 public library product with its own test target.
 **Fix:** delete the target+product+tests, or move real shared code in;
-an empty public product is API surface you must support.
+an empty public product is API surface you must support. Applied: `Locked.swift`
+now gives the target real content (chunk 02). `Placeholder.swift` removal is
+chunk 06's responsibility (depends on this chunk landing first).
 
 ### F10. OpenCombine dependency — evaluate — MINOR
 `FoundationTransactions` pulls OpenCombine + OpenCombineDispatch. If the
