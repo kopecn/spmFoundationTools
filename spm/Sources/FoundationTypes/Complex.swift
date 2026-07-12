@@ -30,7 +30,10 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     /// The SIMD2 vector backing this complex number (real, imaginary).
     public var storage: SIMD2<T> {
         @inlinable get { _storage }
-        @inlinable set { _storage = newValue; _isNormalized = false }
+        @inlinable set {
+            _storage = newValue
+            _isNormalized = false
+        }
     }
 
     /// The real part of the complex number.
@@ -118,9 +121,7 @@ extension Complex where T == Double {
     /// ```
     @inlinable
     public init(magnitude: T, phase: T) {
-        var sinValue: T = 0
-        var cosValue: T = 0
-        __sincos(phase, &sinValue, &cosValue)
+        let (sinValue, cosValue) = sincos(phase)
         self._storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
         self._isNormalized = abs(magnitude - 1) < 1e-10
     }
@@ -145,9 +146,7 @@ extension Complex where T == Float {
     /// ```
     @inlinable
     public init(magnitude: T, phase: T) {
-        var sinValue: T = 0
-        var cosValue: T = 0
-        __sincosf(phase, &sinValue, &cosValue)
+        let (sinValue, cosValue) = sincos(phase)
         self._storage = SIMD2(magnitude * cosValue, magnitude * sinValue)
         self._isNormalized = abs(magnitude - 1) < 1e-5
     }

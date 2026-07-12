@@ -38,7 +38,10 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     /// The SIMD3 vector backing this position (x, y, z).
     public var vector: SIMD3<T> {
         @inlinable get { _vector }
-        @inlinable set { _vector = newValue; _isNormalized = false }
+        @inlinable set {
+            _vector = newValue
+            _isNormalized = false
+        }
     }
 
     /// The x component
@@ -115,9 +118,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - height: The height (z-coordinate)
     @inlinable
     public init(cylindrical radius: T, angle: T, height: T, isNormalized: Bool = false) where T == Double {
-        var sinAngle: T = 0
-        var cosAngle: T = 0
-        __sincos(angle, &sinAngle, &cosAngle)
+        let (sinAngle, cosAngle) = sincos(angle)
         self._vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
         self._isNormalized = isNormalized
     }
@@ -129,9 +130,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///   - height: The height (z-coordinate)
     @inlinable
     public init(cylindrical radius: T, angle: T, height: T, isNormalized: Bool = false) where T == Float {
-        var sinAngle: T = 0
-        var cosAngle: T = 0
-        __sincosf(angle, &sinAngle, &cosAngle)
+        let (sinAngle, cosAngle) = sincos(angle)
         self._vector = SIMD3<T>(radius * cosAngle, radius * sinAngle, height)
         self._isNormalized = isNormalized
     }
@@ -144,12 +143,8 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     @inlinable
     public init(spherical radius: T, azimuth: T, elevation: T, isNormalized: Bool = false) where T == Double {
-        var sinAzimuth: T = 0
-        var cosAzimuth: T = 0
-        var sinElevation: T = 0
-        var cosElevation: T = 0
-        __sincos(azimuth, &sinAzimuth, &cosAzimuth)
-        __sincos(elevation, &sinElevation, &cosElevation)
+        let (sinAzimuth, cosAzimuth) = sincos(azimuth)
+        let (sinElevation, cosElevation) = sincos(elevation)
         let radiusXY = radius * cosElevation
         self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
         self._isNormalized = isNormalized
@@ -163,12 +158,8 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///                Range: -π/2 (south pole) to +π/2 (north pole), with 0 at the equator.
     @inlinable
     public init(spherical radius: T, azimuth: T, elevation: T, isNormalized: Bool = false) where T == Float {
-        var sinAzimuth: T = 0
-        var cosAzimuth: T = 0
-        var sinElevation: T = 0
-        var cosElevation: T = 0
-        __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
-        __sincosf(elevation, &sinElevation, &cosElevation)
+        let (sinAzimuth, cosAzimuth) = sincos(azimuth)
+        let (sinElevation, cosElevation) = sincos(elevation)
         let radiusXY = radius * cosElevation
         self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * sinElevation)
         self._isNormalized = isNormalized
@@ -184,12 +175,8 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
     @inlinable
     public init(sphericalISO radius: T, azimuth: T, polar: T, isNormalized: Bool = false) where T == Double {
-        var sinAzimuth: T = 0
-        var cosAzimuth: T = 0
-        var sinPolar: T = 0
-        var cosPolar: T = 0
-        __sincos(azimuth, &sinAzimuth, &cosAzimuth)
-        __sincos(polar, &sinPolar, &cosPolar)
+        let (sinAzimuth, cosAzimuth) = sincos(azimuth)
+        let (sinPolar, cosPolar) = sincos(polar)
         let radiusXY = radius * sinPolar
         self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
         self._isNormalized = isNormalized
@@ -205,12 +192,8 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     ///            π/2 is the equator (xy-plane), and π is the south pole (-z axis).
     @inlinable
     public init(sphericalISO radius: T, azimuth: T, polar: T, isNormalized: Bool = false) where T == Float {
-        var sinAzimuth: T = 0
-        var cosAzimuth: T = 0
-        var sinPolar: T = 0
-        var cosPolar: T = 0
-        __sincosf(azimuth, &sinAzimuth, &cosAzimuth)
-        __sincosf(polar, &sinPolar, &cosPolar)
+        let (sinAzimuth, cosAzimuth) = sincos(azimuth)
+        let (sinPolar, cosPolar) = sincos(polar)
         let radiusXY = radius * sinPolar
         self._vector = SIMD3<T>(radiusXY * cosAzimuth, radiusXY * sinAzimuth, radius * cosPolar)
         self._isNormalized = isNormalized

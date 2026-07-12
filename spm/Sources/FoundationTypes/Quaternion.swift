@@ -37,7 +37,10 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     /// The SIMD4 vector backing this quaternion (x, y, z, w).
     public var vector: SIMD4<T> {
         @inlinable get { _vector }
-        @inlinable set { _vector = newValue; _isNormalized = false }
+        @inlinable set {
+            _vector = newValue
+            _isNormalized = false
+        }
     }
 
     /// The x component (i coefficient)
@@ -145,9 +148,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     @inlinable
     public init(axis: SIMD3<T>, angle: T) where T == Double {
         let halfAngle = angle * 0.5
-        var sinHalfAngle: T = 0
-        var cosHalfAngle: T = 0
-        __sincos(halfAngle, &sinHalfAngle, &cosHalfAngle)
+        let (sinHalfAngle, cosHalfAngle) = sincos(halfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
@@ -167,9 +168,7 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     @inlinable
     public init(axis: SIMD3<T>, angle: T) where T == Float {
         let halfAngle = angle * 0.5
-        var sinHalfAngle: T = 0
-        var cosHalfAngle: T = 0
-        __sincosf(halfAngle, &sinHalfAngle, &cosHalfAngle)
+        let (sinHalfAngle, cosHalfAngle) = sincos(halfAngle)
 
         let normalizedAxis = simd_normalize(axis)
 
@@ -190,15 +189,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     @inlinable
     public init(roll: T, pitch: T, yaw: T) where T == Float {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        var sx: T = 0
-        var cx: T = 0
-        var sy: T = 0
-        var cy: T = 0
-        var sz: T = 0
-        var cz: T = 0
-        __sincosf(halfAngles.x, &sx, &cx)
-        __sincosf(halfAngles.y, &sy, &cy)
-        __sincosf(halfAngles.z, &sz, &cz)
+        let (sx, cx) = sincos(halfAngles.x)
+        let (sy, cy) = sincos(halfAngles.y)
+        let (sz, cz) = sincos(halfAngles.z)
 
         self._vector = SIMD4<T>(
             sx * cy * cz - cx * sy * sz,
@@ -217,15 +210,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     @inlinable
     public init(roll: T, pitch: T, yaw: T) where T == Double {
         let halfAngles = SIMD3<T>(roll, pitch, yaw) * 0.5
-        var sx: T = 0
-        var cx: T = 0
-        var sy: T = 0
-        var cy: T = 0
-        var sz: T = 0
-        var cz: T = 0
-        __sincos(halfAngles.x, &sx, &cx)
-        __sincos(halfAngles.y, &sy, &cy)
-        __sincos(halfAngles.z, &sz, &cz)
+        let (sx, cx) = sincos(halfAngles.x)
+        let (sy, cy) = sincos(halfAngles.y)
+        let (sz, cz) = sincos(halfAngles.z)
 
         self._vector = SIMD4<T>(
             sx * cy * cz - cx * sy * sz,
