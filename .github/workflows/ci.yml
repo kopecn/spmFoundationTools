@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [dev, prod]
+
+jobs:
+  test-swift:
+    name: Swift Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Swift tests
+        run: make swift-test
