@@ -1,4 +1,20 @@
 import Foundation
+import Logging
+
+// MARK: - Persistence Errors
+
+/// Errors surfaced by `PersistenceStorage`'s save path.
+enum PersistenceStorageError: Error, CustomStringConvertible {
+    /// Every value in the cache failed to encode, so nothing was persisted.
+    case allValuesUnencodable
+
+    var description: String {
+        switch self {
+        case .allValuesUnencodable:
+            return "All cached values failed to encode; nothing was persisted."
+        }
+    }
+}
 
 // MARK: - Type-Safe Persistence Key
 
@@ -56,6 +72,10 @@ public actor PersistenceStorage {
     private static let filename = ".persistant_storage_config.json"
     /// The key used to track all stored keys in UserDefaults.
     private static let allKeysStorageKey = "_PersistenceStorage_AllKeys"
+    /// Logger for reporting persistence failures. Constructed fresh at each use
+    /// site (rather than cached) so tests can bootstrap a capturing `LogHandler`
+    /// ahead of the first failure and observe it deterministically.
+    private static var logger: Logger { Logger(label: "FoundationTools.PersistenceStorage") }
 
     // MARK: - In-Memory Cache
 
@@ -156,22 +176,43 @@ public actor PersistenceStorage {
     // MARK: - Private Persistence Implementation
 
     /// Persists the cache to disk if there are unsaved changes.
+    ///
+    /// A persistence failure (unwritable target, or every value failing to encode)
+    /// is never dropped silently: it is logged at `.error` with the underlying
+    /// error. `save`/`remove`/`clearAll` remain fire-and-forget by design, so the
+    /// error is logged here rather than propagated to those callers.
     private func persistCache() {
         guard isDirty else { return }
 
-        #if os(macOS)
-        // Save each cached value to UserDefaults
-        for (key, value) in cache {
-            saveToUserDefaultsAny(value, forKey: key)
+        do {
+            #if os(macOS)
+            // Save each cached value to UserDefaults
+            var skippedKeys: [String] = []
+            for (key, value) in cache {
+                if !saveToUserDefaultsAny(value, forKey: key) {
+                    skippedKeys.append(key)
+                }
+            }
+            if !skippedKeys.isEmpty {
+                Self.logger.warning(
+                    "Skipped unencodable values while persisting storage",
+                    metadata: ["keys": .string(skippedKeys.sorted().joined(separator: ", "))]
+                )
+            }
+            // Save the set of all stored keys
+            if let keysData = try? JSONEncoder().encode(allStoredKeys) {
+                UserDefaults.standard.set(keysData, forKey: Self.allKeysStorageKey)
+            }
+            if !cache.isEmpty && skippedKeys.count == cache.count {
+                throw PersistenceStorageError.allValuesUnencodable
+            }
+            #else
+            // Save entire cache to JSON file
+            try saveLinuxStorage(cache)
+            #endif
+        } catch {
+            Self.logger.error("Failed to persist storage: \(error)")
         }
-        // Save the set of all stored keys
-        if let keysData = try? JSONEncoder().encode(allStoredKeys) {
-            UserDefaults.standard.set(keysData, forKey: Self.allKeysStorageKey)
-        }
-        #else
-        // Save entire cache to JSON file
-        saveLinuxStorage(cache)
-        #endif
 
         isDirty = false
     }
@@ -192,11 +233,16 @@ public actor PersistenceStorage {
 
     #if os(macOS)
     /// Saves any value to UserDefaults using JSON encoding.
-    private func saveToUserDefaultsAny(_ value: Any, forKey key: String) {
+    /// - Returns: `true` if `value` encoded successfully and was written to
+    ///   UserDefaults; `false` if it was skipped because it could not be encoded.
+    @discardableResult
+    private func saveToUserDefaultsAny(_ value: Any, forKey key: String) -> Bool {
         // Try to encode using AnyEncodable
-        if let encoded = try? JSONEncoder().encode(AnyEncodable(value)) {
-            UserDefaults.standard.set(encoded, forKey: key)
+        guard let encoded = try? JSONEncoder().encode(AnyEncodable(value)) else {
+            return false
         }
+        UserDefaults.standard.set(encoded, forKey: key)
+        return true
     }
 
     /// Loads a Codable value from UserDefaults.
@@ -250,7 +296,10 @@ public actor PersistenceStorage {
 
     #if !os(macOS)
     /// Gets the file URL for Linux storage.
-    private static func getFileURL() -> URL {
+    ///
+    /// Internal (not `private`) so tests can verify the on-disk round trip
+    /// directly via `@testable import`, without changing the storage format.
+    static func getFileURL() -> URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(filename)
     }
@@ -281,27 +330,40 @@ public actor PersistenceStorage {
     }
 
     /// Saves the cache to the Linux storage file.
-    private func saveLinuxStorage(_ cache: [String: Any]) {
-        do {
-            var encodedStorage: [String: String] = [:]
+    /// - Throws: `PersistenceStorageError.allValuesUnencodable` if every cached
+    ///   value failed to encode, or the underlying file-system error if writing
+    ///   the storage file fails.
+    private func saveLinuxStorage(_ cache: [String: Any]) throws {
+        var encodedStorage: [String: String] = [:]
+        var skippedKeys: [String] = []
 
-            for (key, value) in cache {
-                // If already Data, use it directly
-                if let data = value as? Data {
-                    encodedStorage[key] = data.base64EncodedString()
-                }
-                // Otherwise, try to encode it
-                else if let encoded = try? JSONEncoder().encode(AnyEncodable(value)) {
-                    encodedStorage[key] = encoded.base64EncodedString()
-                }
+        for (key, value) in cache {
+            // If already Data, use it directly
+            if let data = value as? Data {
+                encodedStorage[key] = data.base64EncodedString()
             }
-
-            let fileURL = Self.getFileURL()
-            let data = try JSONEncoder().encode(encodedStorage)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            print("Failed to save storage: \(error)")
+            // Otherwise, try to encode it
+            else if let encoded = try? JSONEncoder().encode(AnyEncodable(value)) {
+                encodedStorage[key] = encoded.base64EncodedString()
+            } else {
+                skippedKeys.append(key)
+            }
         }
+
+        if !skippedKeys.isEmpty {
+            Self.logger.warning(
+                "Skipped unencodable values while persisting storage",
+                metadata: ["keys": .string(skippedKeys.sorted().joined(separator: ", "))]
+            )
+        }
+
+        if !cache.isEmpty && skippedKeys.count == cache.count {
+            throw PersistenceStorageError.allValuesUnencodable
+        }
+
+        let fileURL = Self.getFileURL()
+        let data = try JSONEncoder().encode(encodedStorage)
+        try data.write(to: fileURL, options: .atomic)
     }
 
     /// Helper for encoding Any values to JSON.

@@ -2,8 +2,8 @@
 type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
-last_updated: 2026-07-11
-semver: 0.2.0
+last_updated: 2026-07-13
+semver: 0.3.0
 author: Nicholas Bergantz
 ---
 
@@ -18,7 +18,7 @@ math package is `spmMathTools/.claude/review-for-fixes/2026-07-11-swift-audit.md
 
 ## Fix — correctness & error handling
 
-### F1. `PersistenceStorage` swallows save failures with `print` — MAJOR
+### F1. `PersistenceStorage` swallows save failures with `print` — MAJOR — RESOLVED (chunk 03)
 `Sources/FoundationTools/PersistenceStorage.swift:303`:
 `catch { print("Failed to save storage: \(error)") }`. A failed persistence
 write is an actionable failure reported to stdout and then dropped
@@ -27,7 +27,11 @@ levels up (`:294`), `try? JSONEncoder().encode(AnyEncodable(value))` also
 silently drops any unencodable value — data loss with no signal.
 **Fix:** make the save path `throws` (or return `Result`) and log via
 `swift-log` (already a dependency of this target); count/log skipped
-unencodable keys instead of silently omitting them.
+unencodable keys instead of silently omitting them. Applied: both
+`persistCache()` (macOS/UserDefaults) and `saveLinuxStorage` now throw
+`PersistenceStorageError.allValuesUnencodable` when every value fails to
+encode, and log skipped keys at `.warning` / any failure at `.error` via
+`Logger(label: "FoundationTools.PersistenceStorage")`; `print` removed.
 
 ### F2. `NamedPipeChannel.readTask` mutated outside the lock — MAJOR (data race) — RESOLVED (chunk 02)
 `Sources/FoundationTools/NamedPipeChannel.swift:36` declares

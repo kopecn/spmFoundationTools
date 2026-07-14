@@ -77,7 +77,10 @@ let package = Package(
         ),
         .testTarget(
             name: "FoundationToolsTests",
-            dependencies: ["FoundationTools"],
+            dependencies: [
+                "FoundationTools",
+                .product(name: "Logging", package: "swift-log"),
+            ],
             path: "spm/Tests/FoundationToolsTests"
         ),
         .testTarget(

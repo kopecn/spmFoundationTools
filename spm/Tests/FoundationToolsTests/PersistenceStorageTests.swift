@@ -1,4 +1,6 @@
 import Foundation
+import Logging
+import Testing
 import XCTest
 
 @testable import FoundationTools
@@ -450,4 +452,185 @@ final class PersistenceStorageTests: XCTestCase {
             }
         }
     }
+}
+
+// MARK: - F1 Log-Capture Test Support
+
+/// A single captured log emission, recorded verbatim for assertions.
+private struct CapturedLogEntry {
+    let level: Logger.Level
+    let message: String
+}
+
+/// Lock-guarded sink for captured log entries. Not built on `FoundationCommon`'s
+/// `Locked<Value>` to avoid adding a cross-target test dependency for this single
+/// use; this is a self-contained equivalent scoped to the test target.
+private final class CapturedLogEntrySink: @unchecked Sendable {
+    private let lock = NSLock()
+    private var entries: [CapturedLogEntry] = []
+
+    func append(_ entry: CapturedLogEntry) {
+        lock.lock()
+        defer { lock.unlock() }
+        entries.append(entry)
+    }
+
+    /// Returns everything captured so far and clears the sink, so each test starts
+    /// from a known-empty state.
+    func drain() -> [CapturedLogEntry] {
+        lock.lock()
+        defer { lock.unlock() }
+        let drained = entries
+        entries.removeAll()
+        return drained
+    }
+}
+
+/// Minimal `LogHandler` that records every emitted message into
+/// `CapturingLogHandler.entries` instead of writing anywhere. Installed once via
+/// `LogCapture.installOnce` so `PersistenceStorage`'s internal logger (constructed
+/// fresh at each failure site) resolves to this handler.
+private struct CapturingLogHandler: LogHandler {
+    static let entries = CapturedLogEntrySink()
+
+    var metadata: Logger.Metadata = [:]
+    var logLevel: Logger.Level = .trace
+
+    subscript(metadataKey key: String) -> Logger.Metadata.Value? {
+        get { metadata[key] }
+        set { metadata[key] = newValue }
+    }
+
+    func log(
+        level: Logger.Level,
+        message: Logger.Message,
+        metadata: Logger.Metadata?,
+        source: String,
+        file: String,
+        function: String,
+        line: UInt
+    ) {
+        let keys = metadata?["keys"].map { " keys=\($0)" } ?? ""
+        Self.entries.append(CapturedLogEntry(level: level, message: "\(message.description)\(keys)"))
+    }
+}
+
+/// Bootstraps `LoggingSystem` with `CapturingLogHandler` exactly once for the whole
+/// test process. Safe here because `PersistenceStorage.logger` is constructed fresh
+/// per failure (not cached), and no test in this file triggers a persistence
+/// warning/error before this runs (see each `@Test`'s first line).
+private enum LogCapture {
+    static let installOnce: Void = {
+        LoggingSystem.bootstrap { _ in CapturingLogHandler() }
+    }()
+}
+
+// MARK: - F1 Regression Tests (PersistenceStorage error surfacing)
+
+@Suite("PersistenceStorage F1 error surfacing", .serialized)
+struct PersistenceStorageErrorSurfacingTests {
+
+    init() {
+        _ = LogCapture.installOnce
+    }
+
+    /// A value `PersistenceStorage`'s `AnyEncodable` cannot encode (its switch only
+    /// covers String/Int/Float/Double/Bool/Data) — used to force a skipped key.
+    private struct Unencodable: Codable, Sendable, Equatable {
+        let tag: String
+    }
+
+    @Test("testF1_skippedUnencodableValueLogsWarningAndPersistsEncodableKeys")
+    func testF1_skippedUnencodableValueLogsWarningAndPersistsEncodableKeys() async throws {
+        await PersistenceStorage.shared.clearAll()
+        _ = CapturingLogHandler.entries.drain()
+
+        let unencodableKey = PersistenceKey(
+            name: "f1.unencodable",
+            defaultValue: Unencodable(tag: "default")
+        )
+        let encodableKey = PersistenceKey(name: "f1.encodable", defaultValue: "default")
+
+        await PersistenceStorage.shared.save(Unencodable(tag: "value"), for: unencodableKey)
+        await PersistenceStorage.shared.save("hello", for: encodableKey)
+
+        let entries = CapturingLogHandler.entries.drain()
+        let warning = try #require(entries.first { $0.level == .warning })
+        #expect(warning.message.contains("f1.unencodable"))
+
+        #if os(macOS)
+        // Verify the encodable key really reached persisted storage (UserDefaults),
+        // not just the in-memory cache that `load()` would otherwise satisfy from.
+        let persisted = try #require(UserDefaults.standard.data(forKey: "f1.encodable"))
+        let decoded = try JSONDecoder().decode(String.self, from: persisted)
+        #expect(decoded == "hello")
+        #else
+        // On Linux, confirm the encodable key really reached the on-disk storage
+        // file (not just the in-memory cache), by decoding that file directly.
+        let onDisk = try Data(contentsOf: PersistenceStorage.getFileURL())
+        let encodedStorage = try JSONDecoder().decode([String: String].self, from: onDisk)
+        let valueData = try #require(
+            encodedStorage["f1.encodable"].flatMap { Data(base64Encoded: $0) }
+        )
+        let decoded = try JSONDecoder().decode(String.self, from: valueData)
+        #expect(decoded == "hello")
+        #endif
+
+        await PersistenceStorage.shared.clearAll()
+    }
+
+    #if os(macOS)
+    @Test("testF1_fullyFailedSaveSurfacesErrorLog")
+    func testF1_fullyFailedSaveSurfacesErrorLog() async throws {
+        // On macOS the active path is UserDefaults, which has no "unwritable URL"
+        // failure mode; the equivalent fully-failed save is every cached value
+        // being unencodable, which the design requires to surface at `.error`.
+        await PersistenceStorage.shared.clearAll()
+        _ = CapturingLogHandler.entries.drain()
+
+        let key = PersistenceKey(name: "f1.allunencodable", defaultValue: Unencodable(tag: "default"))
+        await PersistenceStorage.shared.save(Unencodable(tag: "value"), for: key)
+
+        let entries = CapturingLogHandler.entries.drain()
+        let errorEntry = try #require(entries.first { $0.level == .error })
+        #expect(errorEntry.message.contains("Failed to persist storage"))
+
+        await PersistenceStorage.shared.clearAll()
+    }
+    #else
+    @Test("testF1_unwritableTargetSurfacesErrorLog")
+    func testF1_unwritableTargetSurfacesErrorLog() async throws {
+        // Linux-only: point HOME at a read-only directory so the atomic file write
+        // in `saveLinuxStorage` fails, and confirm the failure is logged at `.error`
+        // (never `print`-and-dropped).
+        await PersistenceStorage.shared.clearAll()
+        _ = CapturingLogHandler.entries.drain()
+
+        let readOnlyDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("f1-readonly-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: readOnlyDir, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: readOnlyDir.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: readOnlyDir.path)
+            try? FileManager.default.removeItem(at: readOnlyDir)
+        }
+
+        let previousHome = ProcessInfo.processInfo.environment["HOME"]
+        setenv("HOME", readOnlyDir.path, 1)
+        defer {
+            if let previousHome {
+                setenv("HOME", previousHome, 1)
+            } else {
+                unsetenv("HOME")
+            }
+        }
+
+        let key = PersistenceKey(name: "f1.unwritable", defaultValue: "default")
+        await PersistenceStorage.shared.save("value", for: key)
+
+        let entries = CapturingLogHandler.entries.drain()
+        let errorEntry = try #require(entries.first { $0.level == .error })
+        #expect(errorEntry.message.contains("Failed to persist storage"))
+    }
+    #endif
 }

@@ -1,10 +1,10 @@
 ---
 chunk: 03-persistence-errors
-status: pending
+status: complete
 depends_on: []
 audit: ../review-for-fixes/2026-07-11-swift-audit.md §F1
-last_updated: 2026-07-11
-semver: 0.0.1
+last_updated: 2026-07-13
+semver: 0.1.0
 author: Nicholas Bergantz
 ---
 
@@ -48,3 +48,18 @@ author: Nicholas Bergantz
 ## Out of scope
 
 Changing the storage format; AnyEncodable redesign; NamedPipeChannel.
+
+## Resolution
+
+`persistCache()`/`saveLinuxStorage` now `throw PersistenceStorageError
+.allValuesUnencodable` when every cached value fails to encode, and the macOS
+path's `saveToUserDefaultsAny` returns a `Bool` so skipped keys can be
+collected. Both paths log skipped keys at `.warning` and any thrown failure
+at `.error` via `Logger(label: "FoundationTools.PersistenceStorage")` —
+`print` is gone. `getFileURL()` was widened from `private` to `internal`
+solely so tests can verify the on-disk round trip via `@testable import`
+without changing the storage format. `Package.swift`'s
+`FoundationToolsTests` target gained a `Logging` product dependency so the
+test file can install a capturing `LogHandler` and assert on emitted
+levels/messages. Both new regression tests (`testF1_...`) pass; `make build
+test` is green.
