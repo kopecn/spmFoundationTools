@@ -3,7 +3,7 @@ type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
 last_updated: 2026-07-13
-semver: 0.6.0
+semver: 0.7.0
 author: Nicholas Bergantz
 ---
 
@@ -163,6 +163,12 @@ dependencies and native cancellation (concurrency spec preference; fewer
 deps tie-breaker). **Fix:** inventory the Combine surface actually used;
 if it's publishers-as-event-bus, plan a migration; if it's load-bearing
 operators, keep and document why.
+(inventoried in chunk 07 — see `../review-for-fixes/opencombine-inventory.md`;
+recommendation: hybrid — migrate internals to `AsyncStream` (zero
+operator-chain usage found), deprecate the 5 public OpenCombine-typed
+properties for one release, then remove them + the dependency in a later
+breaking-change chunk. Not marked RESOLVED — this was an evaluate finding,
+not a fix.)
 
 ## Optimize
 

@@ -1,10 +1,10 @@
 ---
 chunk: 07-opencombine-inventory
-status: pending
+status: complete
 depends_on: []
 audit: ../review-for-fixes/2026-07-11-swift-audit.md §F10
-last_updated: 2026-07-11
-semver: 0.0.1
+last_updated: 2026-07-13
+semver: 0.1.0
 author: Nicholas Bergantz
 ---
 
@@ -44,3 +44,24 @@ chunk count for a migration, so a follow-up scope-plan can pick it up.
 ## Out of scope
 
 Any code change whatsoever.
+
+## Resolution
+
+Full inventory published at
+[`../review-for-fixes/opencombine-inventory.md`](../review-for-fixes/opencombine-inventory.md).
+Only 3 of 7 `FoundationTransactions` files touch OpenCombine (`Transaction.swift`,
+`TransactionHandler.swift`, a doc-comment-only mention in `TransactionEvent.swift`).
+24 live symbol usages found: 13 event-stream (bare `.send`/init on
+`CurrentValueSubject`/`PassthroughSubject`, zero operators chained), 0
+operator-chain, and 5 public API surface properties (`Transaction.statePublisher`/
+`resultPublisher`/`eventPublisher`, `TransactionHandler.resourceStatePublisher`/
+`unsolicitedEventPublisher`) with no in-repo consumers found — blast radius is
+external/unknown. `OpenCombineDispatch` is imported but entirely unused (dead
+sub-dependency). A private `cancellables: Set<AnyCancellable>` in
+`TransactionHandler` is also dead (never populated).
+
+**Recommendation: hybrid** — migrate all internal plumbing to `AsyncStream`
+(zero operator-chain usage means no real migration cost), then deprecate the
+public OpenCombine-typed properties for one release before removing them (and
+the `OpenCombine`/`OpenCombineDispatch` dependency) in a later breaking-change
+chunk. Rough estimate: 3 chunks now + 1 deferred breaking-change chunk.
