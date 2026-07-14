@@ -69,20 +69,44 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
 
     /// Default timeout for transactions in seconds.
     public var defaultTimeout: TimeInterval {
-        get { lock.lock(); defer { lock.unlock() }; return _defaultTimeout }
-        set { lock.lock(); defer { lock.unlock() }; _defaultTimeout = newValue }
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _defaultTimeout
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _defaultTimeout = newValue
+        }
     }
 
     /// Maximum number of concurrent parallel transactions.
     public var maxConcurrentParallel: Int {
-        get { lock.lock(); defer { lock.unlock() }; return _maxConcurrentParallel }
-        set { lock.lock(); defer { lock.unlock() }; _maxConcurrentParallel = newValue }
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _maxConcurrentParallel
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _maxConcurrentParallel = newValue
+        }
     }
 
     /// Maximum queue depth for serial commands.
     public var maxSerialQueueDepth: Int {
-        get { lock.lock(); defer { lock.unlock() }; return _maxSerialQueueDepth }
-        set { lock.lock(); defer { lock.unlock() }; _maxSerialQueueDepth = newValue }
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _maxSerialQueueDepth
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _maxSerialQueueDepth = newValue
+        }
     }
 
     /// Publisher for unsolicited events from the resource.
@@ -111,8 +135,16 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// If the message does not match any pending transaction, call
     /// `inboundTransactionHandler` (if set) before returning.
     public var messageParser: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
-        get { lock.lock(); defer { lock.unlock() }; return _messageParser }
-        set { lock.lock(); defer { lock.unlock() }; _messageParser = newValue }
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _messageParser
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _messageParser = newValue
+        }
     }
 
     /// Handler for inbound messages whose transaction ID was not initiated locally.
@@ -127,9 +159,19 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     ///     // Parse the remote-initiated frame and send a response via the pipe
     /// }
     /// ```
-    public var inboundTransactionHandler: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)? {
-        get { lock.lock(); defer { lock.unlock() }; return _inboundTransactionHandler }
-        set { lock.lock(); defer { lock.unlock() }; _inboundTransactionHandler = newValue }
+    public var inboundTransactionHandler:
+        (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _inboundTransactionHandler
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _inboundTransactionHandler = newValue
+        }
     }
 
     // MARK: - Private Properties
@@ -137,12 +179,19 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private let resourceStateSubject: CurrentValueSubject<ResourceState, Never>
     private let unsolicitedEventSubject = PassthroughSubject<TransactionEvent, Never>()
     private var cancellables = Set<AnyCancellable>()
+    // AUDIT F4: recursive lock is required today because `cleanupTransaction`
+    // (called while `lock` is held by `processResponse`/`processError`/`cancel`/
+    // `handleTimeout`) calls the public `updateResourceState(_:)`, which itself
+    // acquires `lock`. Restructuring so public entry points take the lock exactly
+    // once (plain lock, or actor) is deferred to a chunk that lands alongside the
+    // F10 (OpenCombine) decision — see .claude/review-for-fixes/2026-07-11-swift-audit.md §F4.
     private let lock = NSRecursiveLock()
     private var _defaultTimeout: TimeInterval = 30.0
     private var _maxConcurrentParallel: Int = 10
     private var _maxSerialQueueDepth: Int = 100
     private var _messageParser: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
-    private var _inboundTransactionHandler: (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
+    private var _inboundTransactionHandler:
+        (@Sendable (_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
     private var serialQueueHead: Int = 0
     private var exclusiveQueueHead: Int = 0
 
@@ -156,7 +205,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private var activeExclusiveTransaction: Transaction<Command>?
     private var exclusiveQueue: [Transaction<Command>] = []
     private var allActiveTransactions: [Int: Transaction<Command>] = [:]
-    private var timeoutTimers: [Int: AnyCancellable] = [:]
+    private var timeoutTasks: [Int: Task<Void, Never>] = [:]
     private var pipe: (any MessageDuplex)?
 
     // MARK: - Initialization
@@ -507,16 +556,20 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         let transactionID = transaction.id
         let timeout = transaction.timeout
 
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.handleTimeout(transactionID: transactionID)
+        let timeoutTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(timeout))
+                self?.handleTimeout(transactionID: transactionID)
+            } catch {
+                // CancellationError — transaction completed (or was cancelled) first.
+            }
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: workItem)
-        timeoutTimers[transactionID] = AnyCancellable { workItem.cancel() }
+        timeoutTasks[transactionID] = timeoutTask
     }
 
     private func cancelTimeout(for transactionID: Int) {
-        timeoutTimers[transactionID]?.cancel()
-        timeoutTimers.removeValue(forKey: transactionID)
+        timeoutTasks[transactionID]?.cancel()
+        timeoutTasks.removeValue(forKey: transactionID)
     }
 
     private func handleTimeout(transactionID: Int) {

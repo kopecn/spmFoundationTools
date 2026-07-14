@@ -3,7 +3,7 @@ type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
 last_updated: 2026-07-13
-semver: 0.3.0
+semver: 0.4.0
 author: Nicholas Bergantz
 ---
 
@@ -46,7 +46,7 @@ moved into `SyncState`, guarded by the new `Locked<Value>` primitive; the
 actor conversion is deferred (API-breaking, recorded as a future
 consideration).
 
-### F3. `TransactionHandler` timeout is unstructured and uncancellable — MAJOR
+### F3. `TransactionHandler` timeout is unstructured and uncancellable — MAJOR — RESOLVED (chunk 04)
 `Sources/FoundationTransactions/TransactionHandler.swift:513`:
 `DispatchQueue.global().asyncAfter(deadline:execute:)` schedules the timeout
 work item outside structured concurrency — it ignores task cancellation and
@@ -54,6 +54,17 @@ outlives the transaction (concurrency spec: prefer structured concurrency;
 tasks must cooperate with cancellation).
 **Fix:** replace with a child `Task` using `try await Task.sleep(for:)` +
 `Task.checkCancellation()`, cancelled when the transaction completes.
+**Applied:** `startTimeout(for:)` now stores a `Task<Void, Never>` per
+transaction (`timeoutTasks: [Int: Task<Void, Never>]`, replacing
+`timeoutTimers: [Int: AnyCancellable]`) that awaits `Task.sleep(for:)` and
+calls `handleTimeout` on completion, catching `CancellationError` as a no-op;
+`cancelTimeout(for:)` calls `.cancel()` on the stored task. All existing
+completion paths (`processResponse`, `processError`, `cancel`,
+`cancelAllActiveTransactions`) already routed through `cancelTimeout(for:)`,
+so no call sites needed further changes. Regression coverage:
+`spm/Tests/FoundationTransactionsTests/TransactionHandlerTests.swift` (new
+test target `FoundationTransactionsTests` added to `Package.swift`, since none
+existed for this module).
 
 ### F4. `NSRecursiveLock` in `TransactionHandler` — MINOR (smell)
 `TransactionHandler.swift:140`. Recursive locking usually papers over
@@ -62,6 +73,11 @@ re-entrant call paths that should be restructured; combined with
 the compiler.
 **Fix (when touched next):** restructure so public entry points take the
 lock exactly once (plain `NSLock`/`Mutex`), or make the handler an actor.
+(Not resolved in chunk 04 — a `// AUDIT F4:` comment now sits at the
+declaration, noting the concrete re-entrant path: `cleanupTransaction`,
+called while `lock` is held by `processResponse`/`processError`/`cancel`/
+`handleTimeout`, calls the public `updateResourceState(_:)`, which re-acquires
+`lock`. Full restructure remains deferred alongside the F10 decision.)
 
 ## Fix — cross-platform (decide Linux, then act)
 

@@ -92,6 +92,11 @@ let package = Package(
             name: "FoundationTypesTests",
             dependencies: ["FoundationTypes"],
             path: "spm/Tests/FoundationTypesTests"
+        ),
+        .testTarget(
+            name: "FoundationTransactionsTests",
+            dependencies: ["FoundationTransactions"],
+            path: "spm/Tests/FoundationTransactionsTests"
         )
     ]
 )
