@@ -1,4 +1,4 @@
-.PHONY: help clean build test format tag version checkGitClean mermaid bump-patch bump-minor bump-major release
+.PHONY: help open-github clean build test format tag version checkGitClean mermaid bump-patch bump-minor bump-major release
 
 .DEFAULT_GOAL := help
 
@@ -69,7 +69,7 @@ tag: checkGitClean version  ## Tag the current version in git
 	git tag -a v$$(make version) -m "Release v$$(make version)"
 	git push origin v$$(make version)
 
-mermaid: ## Create the mermaid layout for this project
+mermaid: ## Create the mermaid layout for this project (requires depermaid as a resolved Package.swift dependency; kept intentionally, see chunk 06 resolution)
 	swift package plugin depermaid --direction TD --test --executable --product
 
 release: clean build test  ## Full release process
@@ -77,5 +77,11 @@ release: clean build test  ## Full release process
 checkGitClean:
 	@git diff-index --quiet HEAD -- || (echo "Git working directory not clean" && exit 1)
 
-open-github: ## Open this repo's GitHub page in the browser
-	@bash $(SCRIPTS)/open-github.sh
+open-github:  ## Open the GitHub repository in the default browser (macOS/Linux)
+	@remote=$$(git remote | head -1); \
+	[ -n "$$remote" ] || { echo "No git remote configured."; exit 1; }; \
+	url=$$(git remote get-url "$$remote" | sed -e 's|git@github.com:|https://github.com/|' -e 's|\.git$$||'); \
+	echo "Opening $$url"; \
+	if [ "$(UNAME_S)" = "Darwin" ]; then open "$$url"; \
+	elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$$url"; \
+	else echo "No browser opener found; visit: $$url"; fi

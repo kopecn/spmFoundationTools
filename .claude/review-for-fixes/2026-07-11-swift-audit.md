@@ -3,7 +3,7 @@ type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
 last_updated: 2026-07-13
-semver: 0.5.0
+semver: 0.6.0
 author: Nicholas Bergantz
 ---
 
@@ -128,20 +128,33 @@ wraps an array of the now-conditionally-Sendable type — without the matching
 (`stored property 'values' ... contains non-Sendable type 'T.SIMD4Storage'`).
 Fixed in the same chunk; see chunk 05's Resolution section.
 
-### F8. `depermaid` is a declared dependency no target uses — MINOR
+### F8. `depermaid` is a declared dependency no target uses — MINOR — RESOLVED (chunk 06, documented deviation)
 `Package.swift` dependencies list it; no target references it. Every
 `swift package resolve` fetches it for nothing (decision framework: fewer
 dependencies).
 **Fix:** remove from `Package.swift` (re-add ad hoc when generating
-dependency diagrams).
+dependency diagrams). Applied: investigated instead of removing outright —
+"no target references it" is true but doesn't mean the dependency is unused.
+`depermaid` is invoked by `make mermaid` as a SwiftPM *command plugin*
+(`swift package plugin depermaid …`), and command plugins are vended by a
+package dependency directly, not by a target linking against it. Verified
+empirically: removing `depermaid` from `Package.swift` and running
+`swift package plugin --list` / `make mermaid` breaks plugin discovery
+(`error: Unknown subcommand or plugin name 'depermaid'`, exit 64); re-adding
+it restores both. Kept `depermaid` in `Package.swift` and added a note to the
+`mermaid` target's `##` help text in `makefile` explaining why it must stay
+resolved.
 
-### F9. `FoundationCommon` is an empty product — MINOR — PARTIALLY RESOLVED (chunk 02; cleanup in chunk 06)
+### F9. `FoundationCommon` is an empty product — MINOR — RESOLVED (chunk 02 + chunk 06)
 The target contains only `Placeholder.swift` (0 bytes) yet ships as a
 public library product with its own test target.
 **Fix:** delete the target+product+tests, or move real shared code in;
 an empty public product is API surface you must support. Applied: `Locked.swift`
-now gives the target real content (chunk 02). `Placeholder.swift` removal is
-chunk 06's responsibility (depends on this chunk landing first).
+now gives the target real content (chunk 02); `Placeholder.swift` deleted
+along with the placeholder-only `FoundationCommonTests.swift` (an empty-body
+XCTest stub) in chunk 06. `LockedTests.swift` (swift-testing, chunk 02) is
+the target's real test content. `FoundationCommon` builds standalone with
+only `Locked.swift`.
 
 ### F10. OpenCombine dependency — evaluate — MINOR
 `FoundationTransactions` pulls OpenCombine + OpenCombineDispatch. If the
