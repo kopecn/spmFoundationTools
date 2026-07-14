@@ -29,7 +29,8 @@ public typealias FloatWaveformSpatialPose = WaveformSpatialPose<Float>
 /// // Double pose waveform
 /// var doubleWaveform = DoubleWaveformSpatialPose(positions: [DoublePosition.origin], quaternions: [DoubleQuaternion.identity])
 /// ```
-public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable {
+public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable
+where T.SIMD4Storage: Sendable {
     /// The sampled position values of the waveform
     public var positions: [Position<T>]
 
@@ -95,8 +96,11 @@ public struct WaveformSpatialPose<T: BinaryFloatingPoint & SIMDScalar & Sendable
     ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(poses: [SpatialPose<T>], dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0), t0: PrecisionTimestamp? = nil)
-    {
+    public init(
+        poses: [SpatialPose<T>],
+        dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0),
+        t0: PrecisionTimestamp? = nil
+    ) {
         precondition(dt > .zero, "Time interval (dt) must be positive, got \(dt)")
         self.positions = poses.map { $0.position }
         self.quaternions = poses.map { $0.quaternion }

@@ -57,6 +57,7 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     }
 
     /// Converts the complex number to an array of components `[real, imaginary]`.
+    /// - Note: Allocates a new array per access — not for hot loops.
     @inlinable
     public var components: [T] {
         return [real, imaginary]
@@ -98,9 +99,9 @@ public struct Complex<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable> 
     }
 }
 
-// SIMD2<T> lacks a conditional Sendable conformance in the stdlib, so synthesis
-// cannot verify this automatically. Complex is a pure value type — safe.
-extension Complex: @unchecked Sendable {}
+// `T: Sendable` on the generic bound does not extend to SIMDScalar's associated
+// storage type; the compiler needs that spelled out explicitly to verify Sendable.
+extension Complex: Sendable where T.SIMD2Storage: Sendable {}
 
 // MARK: - Phasor/Polar Initializer (Double)
 

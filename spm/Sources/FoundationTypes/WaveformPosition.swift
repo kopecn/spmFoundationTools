@@ -24,7 +24,8 @@ public typealias FloatWaveformPosition = WaveformPosition<Float>
 /// // Double position waveform
 /// var doubleWaveform = DoubleWaveformPosition(values: [DoublePosition.origin])
 /// ```
-public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable {
+public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: Sendable
+where T.SIMD4Storage: Sendable {
     /// The sampled position values of the waveform
     public var values: [Position<T>]
 
@@ -40,7 +41,11 @@ public struct WaveformPosition<T: BinaryFloatingPoint & SIMDScalar & Sendable>: 
     ///   - dt: The time interval between samples (must be positive, defaults to 1 second)
     ///   - t0: The absolute start time of the first sample
     /// - Precondition: dt must be greater than 0
-    public init(values: [Position<T>], dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0), t0: PrecisionTimestamp? = nil) {
+    public init(
+        values: [Position<T>],
+        dt: PrecisionTimeInterval = PrecisionTimeInterval(seconds: 1.0),
+        t0: PrecisionTimestamp? = nil
+    ) {
         precondition(dt > .zero, "Time interval (dt) must be positive, got \(dt)")
         self.values = values
         self.dt = dt

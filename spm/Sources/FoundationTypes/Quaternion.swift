@@ -238,8 +238,9 @@ public struct Quaternion<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codabl
     }
 }
 
-// Unsafe but explicit Sendable conformance
-extension Quaternion: @unchecked Sendable {}
+// `T: Sendable` on the generic bound does not extend to SIMDScalar's associated
+// storage type; the compiler needs that spelled out explicitly to verify Sendable.
+extension Quaternion: Sendable where T.SIMD4Storage: Sendable {}
 
 // MARK: - Normalization Flag
 

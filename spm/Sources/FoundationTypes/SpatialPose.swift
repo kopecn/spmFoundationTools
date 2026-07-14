@@ -342,8 +342,10 @@ extension SpatialPose where T == Double {
     }
 }
 
-// Unsafe but explicit Sendable conformance
-extension SpatialPose: @unchecked Sendable {}
+// `T: Sendable` on the generic bound does not extend to SIMDScalar's associated
+// storage type; the compiler needs that spelled out explicitly to verify Sendable.
+// Both nested Position and Quaternion storage bottom out in SIMD4Storage.
+extension SpatialPose: Sendable where T.SIMD4Storage: Sendable {}
 
 extension SpatialPose {
 

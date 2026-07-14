@@ -3,7 +3,7 @@ type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
 last_updated: 2026-07-13
-semver: 0.4.0
+semver: 0.5.0
 author: Nicholas Bergantz
 ---
 
@@ -109,14 +109,24 @@ to Linux via Foundation) replaces `OSAllocatedUnfairLock` instead.
 
 ## Fix — API & structural
 
-### F7. `@unchecked Sendable` on pure value structs — MAJOR (free win)
+### F7. `@unchecked Sendable` on pure value structs — MAJOR (free win) — RESOLVED (chunk 05)
 `FoundationTypes/{Complex,Position,Quaternion,SpatialPose}.swift` all
 declare `@unchecked Sendable`, yet their storage is SIMD vectors + `Bool` —
 plainly `Sendable` when `T: Sendable` (which the generic bound already
 requires). `@unchecked` disables the compiler's verification for zero
 benefit and hides future regressions (concurrency spec red flag).
 **Fix:** replace with plain `Sendable` conformance; if the compiler then
-reports a genuine hole, that report is the finding.
+reports a genuine hole, that report is the finding. Applied: all four types
+now use `extension <Type>: Sendable where T.SIMD{2,4}Storage: Sendable {}` —
+`T: Sendable` on the generic bound doesn't extend to `SIMDScalar`'s
+associated storage type, so the compiler needs that spelled out explicitly
+to verify Sendable; `@unchecked` is gone. This is a genuine (expected)
+compiler finding, not a rejection: the conditional bound had to propagate to
+`WaveformPosition`/`WaveformQuaternion`/`WaveformSpatialPose` too, since each
+wraps an array of the now-conditionally-Sendable type — without the matching
+`where T.SIMD4Storage: Sendable` clause those three failed to build
+(`stored property 'values' ... contains non-Sendable type 'T.SIMD4Storage'`).
+Fixed in the same chunk; see chunk 05's Resolution section.
 
 ### F8. `depermaid` is a declared dependency no target uses — MINOR
 `Package.swift` dependencies list it; no target references it. Every
@@ -156,12 +166,12 @@ numeric hot-path types when ABI stability allows). Library evolution mode
 is off for SPM by default, so impact is limited — apply only with a
 benchmark showing wins.
 
-### O3. `components: [T]` allocates per access — MINOR
+### O3. `components: [T]` allocates per access — MINOR (addressed in chunk 05)
 Each read of `Complex.components` / `Position.components` allocates an
 array. Fine for serialization; document it as not-for-hot-loops, or return
 a tuple where call sites allow.
 
-### O4. Cached `_isNormalized` invalidation is untested — MINOR
+### O4. Cached `_isNormalized` invalidation is untested — MINOR (addressed in chunk 05)
 The didSet-clears-flag pattern spans every setter of all four geometry
 types; no test pins "mutate component → `isNormalized` false". One
 parameterized test closes the class of regression.

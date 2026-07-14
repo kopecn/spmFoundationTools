@@ -75,6 +75,7 @@ public struct Position<T: BinaryFloatingPoint & SIMDScalar & Sendable & Codable>
     }
 
     /// Convert position to an array of components
+    /// - Note: Allocates a new array per access — not for hot loops.
     @inlinable
     public var components: [T] {
         return [x, y, z]
@@ -229,9 +230,10 @@ extension Position where T: BinaryFloatingPoint {
     }
 }
 
-// SIMD3<T> lacks a conditional Sendable conformance in the stdlib, so synthesis
-// cannot verify this automatically. Position is a pure value type — safe.
-extension Position: @unchecked Sendable {}
+// `T: Sendable` on the generic bound does not extend to SIMDScalar's associated
+// storage type; the compiler needs that spelled out explicitly to verify Sendable.
+// SIMD3<T> is backed by SIMDScalar's SIMD4Storage (no distinct SIMD3Storage).
+extension Position: Sendable where T.SIMD4Storage: Sendable {}
 
 extension Position {
 
