@@ -2,8 +2,8 @@
 type: audit
 name: swift-audit-foundation-tools
 purpose: Repo-wide Swift audit — findings ranked by severity with minimal fixes
-last_updated: 2026-07-13
-semver: 0.7.0
+last_updated: 2026-07-15
+semver: 0.8.0
 author: Nicholas Bergantz
 ---
 
@@ -169,6 +169,29 @@ operator-chain usage found), deprecate the 5 public OpenCombine-typed
 properties for one release, then remove them + the dependency in a later
 breaking-change chunk. Not marked RESOLVED — this was an evaluate finding,
 not a fix.)
+
+### F11. `swift test` hangs on Linux (Docker) before any test output — MAJOR — BLOCKED, needs focused investigation (chunk 08)
+Two independent runs of `make linux-test` (`docker run --rm ... swift:6.1
+swift test --package-path .`) hung. First run hung 27+ minutes at
+`NamedPipeChannelTests.testQueueStrategyEnum` "started" with the Docker
+daemon later found unreachable (possible Docker Desktop crash, not
+necessarily a code bug). Second run, with the daemon confirmed healthy
+throughout, hung 58 minutes with **zero test output ever emitted** — process
+inspection showed the `swift-test` driver blocked in `rt_sigsuspend` and the
+`.xctest` bundle blocked in `poll()` with 0:00 accumulated CPU, both holding
+both ends of the same internal output-capture pipes open. The hang appears
+to be inside the toolchain's own driver↔bundle IPC on Linux/aarch64, before
+any of this repo's own test code runs — not confirmed as a defect in this
+repo's source (`NamedPipeChannel` or otherwise) versus a toolchain/image/
+Docker-Desktop-VM environmental issue.
+**Status:** ON HOLD — ruled out as a trivial fix; needs a dedicated
+investigation (reproduce outside Docker Desktop's VM, attach `lldb` to a
+hung container before killing it, try an isolated single-test run to check
+if the hang is immediate/test-count-dependent) before any next step. See
+`../action-plan/08-linux-verification.md` for full evidence and repro
+details. The `linux-test` makefile target itself is left in place
+(uncommitted) — it documents the intended target even though it does not
+yet pass.
 
 ## Optimize
 
